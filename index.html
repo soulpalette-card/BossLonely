@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>寂寞老板修仙传</title>
+<style>
+  :root{
+    --ink:#0e1116; --ink2:#161b24; --paper:#e9e0cc;
+    --gold:#d9b25a; --gold2:#f0d998; --jade:#7fb2a0; --seal:#b0392e; --seal2:#c85347;
+    --line:rgba(217,178,90,.28); --muted:#9aa3ad;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;height:100%;}
+  body{
+    font-family:"STKaiti","KaiTi","楷体","STSong","SimSun",serif;
+    color:var(--paper);
+    background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(217,178,90,.10), transparent 60%),
+      radial-gradient(900px 500px at -10% 110%, rgba(127,178,160,.10), transparent 55%),
+      radial-gradient(600px 600px at 50% 40%, rgba(255,255,255,.03), transparent 70%),
+      linear-gradient(160deg,#0b0e13,#141a24 60%,#0b0e13);
+    background-attachment:fixed;
+    overflow-x:hidden;
+  }
+  body::before{ /* 宣纸墨迹纹理 */
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.5;
+    background:
+      radial-gradient(2px 2px at 20% 30%, rgba(255,255,255,.04), transparent),
+      radial-gradient(2px 2px at 70% 80%, rgba(255,255,255,.03), transparent),
+      repeating-linear-gradient(115deg, rgba(0,0,0,.10) 0 2px, transparent 2px 6px);
+    mix-blend-mode:soft-light;
+  }
+  #app{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:12px 12px 90px;}
+
+  /* ===== 顶栏 ===== */
+  header{text-align:center;padding:6px 0 10px;}
+  .title{
+    font-size:30px;font-weight:700;letter-spacing:4px;
+    background:linear-gradient(180deg,var(--gold2),var(--gold));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    text-shadow:0 2px 10px rgba(217,178,90,.25);
+    display:inline-flex;align-items:center;gap:10px;
+  }
+  .seal{
+    display:inline-grid;place-items:center;width:34px;height:34px;border-radius:8px;
+    background:linear-gradient(145deg,var(--seal2),var(--seal));color:#fff;font-size:15px;
+    box-shadow:0 0 0 2px rgba(255,255,255,.15) inset,0 4px 12px rgba(176,57,46,.4);
+    transform:rotate(-6deg);
+  }
+  .company{margin-top:2px;color:var(--jade);font-size:15px;letter-spacing:2px;}
+  .stats{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px;
+  }
+  .stat{
+    background:linear-gradient(180deg,var(--ink2),rgba(22,27,36,.6));
+    border:1px solid var(--line);border-radius:12px;padding:8px 6px;text-align:center;
+    box-shadow:0 2px 10px rgba(0,0,0,.3) inset;
+  }
+  .stat .k{font-size:11px;color:var(--muted);letter-spacing:1px;}
+  .stat .v{font-size:16px;color:var(--gold2);font-weight:700;margin-top:2px;word-break:break-all;}
+  .stat.realm .v{color:var(--jade);font-size:15px;}
+
+  /* ===== 战斗区 ===== */
+  #battle{
+    position:relative;margin-top:14px;border-radius:16px;overflow:hidden;
+    border:1px solid var(--line);
+    background:
+      radial-gradient(400px 200px at 50% 0%, rgba(176,57,46,.14), transparent 70%),
+      linear-gradient(180deg,#12161e,#0c0f15);
+    padding:16px 14px 18px;text-align:center;
+    box-shadow:0 8px 30px rgba(0,0,0,.4);
+  }
+  #stageLabel{color:var(--gold);font-size:14px;letter-spacing:2px;}
+  #bossTag{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:20px;font-size:12px;
+    background:var(--seal);color:#fff;box-shadow:0 0 12px rgba(200,83,71,.6);}
+  #mob{font-size:74px;line-height:1.1;margin:6px 0 2px;cursor:pointer;user-select:none;
+    filter:drop-shadow(0 6px 14px rgba(0,0,0,.5));transition:transform .06s;}
+  #mob:active{transform:scale(.92);}
+  #mobName{font-size:18px;letter-spacing:2px;color:var(--paper);}
+  #hpWrap{margin:12px auto 4px;max-width:360px;height:20px;border-radius:12px;
+    background:#080a0e;border:1px solid var(--line);overflow:hidden;position:relative;}
+  #hpBar{height:100%;width:100%;border-radius:12px;
+    background:linear-gradient(90deg,#7a231b,#c0392b 60%,#e05a4c);
+    box-shadow:0 0 14px rgba(200,57,43,.5) inset;transition:width .08s linear;}
+  #hpText{position:absolute;inset:0;display:grid;place-items:center;font-size:12px;color:#fff;
+    text-shadow:0 1px 2px #000;letter-spacing:1px;}
+  #dpsLine{margin-top:8px;color:var(--jade);font-size:13px;letter-spacing:1px;}
+  #timer{color:var(--seal2);font-size:13px;margin-top:4px;height:16px;}
+  #floats{position:absolute;inset:0;pointer-events:none;overflow:hidden;}
+  .float{position:absolute;left:50%;top:40%;transform:translateX(-50%);
+    font-size:16px;font-weight:700;color:var(--gold2);text-shadow:0 1px 3px #000;
+    animation:floatUp 1s ease-out forwards;}
+  .float.crit{color:#ff8a5c;font-size:20px;}
+  @keyframes floatUp{0%{opacity:0;} 15%{opacity:1;} 100%{opacity:0;transform:translate(-50%,-46px);}}
+
+  /* ===== 标签页 ===== */
+  #tabs{position:fixed;left:0;right:0;bottom:0;z-index:5;
+    max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);
+    background:linear-gradient(0deg,#0a0d12,rgba(10,13,18,.85));
+    border-top:1px solid var(--line);backdrop-filter:blur(6px);}
+  .tab{padding:12px 4px 14px;text-align:center;font-size:14px;letter-spacing:2px;color:var(--muted);
+    cursor:pointer;border-top:3px solid transparent;transition:.15s;}
+  .tab .ico{display:block;font-size:19px;margin-bottom:2px;}
+  .tab.active{color:var(--gold2);border-top-color:var(--gold);background:rgba(217,178,90,.06);}
+
+  #panel{margin-top:14px;}
+  .card{
+    background:linear-gradient(180deg,var(--ink2),rgba(20,25,34,.55));
+    border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px;
+    box-shadow:0 4px 16px rgba(0,0,0,.25);
+  }
+  .row{display:flex;align-items:center;gap:10px;}
+  .emj{font-size:32px;width:42px;text-align:center;flex:none;
+    filter:drop-shadow(0 3px 6px rgba(0,0,0,.4));}
+  .grow{flex:1;min-width:0;}
+  .nm{font-size:16px;letter-spacing:1px;}
+  .rar{font-size:11px;padding:0 6px;border-radius:8px;margin-left:6px;vertical-align:middle;}
+  .r0{background:#3a3f47;color:#cfd6de;} .r1{background:#2f5d4e;color:#bff0dc;}
+  .r2{background:#2f4a7a;color:#c3d8ff;} .r3{background:#6a3f7a;color:#eaccff;}
+  .r4{background:linear-gradient(90deg,#b0392e,#d9b25a);color:#fff;}
+  .sub{font-size:12px;color:var(--muted);margin-top:3px;}
+  .own{color:var(--gold2);font-weight:700;}
+  button.buy{
+    flex:none;min-width:96px;padding:9px 10px;border:none;border-radius:10px;cursor:pointer;
+    font-family:inherit;font-size:13px;letter-spacing:1px;color:#20160a;font-weight:700;
+    background:linear-gradient(180deg,var(--gold2),var(--gold));
+    box-shadow:0 3px 10px rgba(217,178,90,.3);transition:.1s;
+  }
+  button.buy:active{transform:translateY(1px);}
+  button.buy.dis{background:#2a2f38;color:#5c6470;box-shadow:none;cursor:not-allowed;}
+  button.buy .c{display:block;font-size:11px;opacity:.85;font-weight:400;}
+  button.big{width:100%;padding:14px;font-size:16px;border:none;border-radius:12px;cursor:pointer;
+    font-family:inherit;font-weight:700;letter-spacing:2px;color:#20160a;
+    background:linear-gradient(180deg,var(--gold2),var(--gold));box-shadow:0 4px 14px rgba(217,178,90,.35);}
+  button.big.dis{background:#2a2f38;color:#5c6470;box-shadow:none;cursor:not-allowed;}
+  button.big.seal{background:linear-gradient(180deg,var(--seal2),var(--seal));color:#fff;
+    box-shadow:0 4px 16px rgba(176,57,46,.5);}
+  .locked{opacity:.5;}
+  .bar{height:10px;border-radius:6px;background:#080a0e;border:1px solid var(--line);overflow:hidden;margin-top:8px;}
+  .bar > i{display:block;height:100%;background:linear-gradient(90deg,var(--jade),#a8e6cf);}
+  .hint{font-size:12px;color:var(--muted);text-align:center;padding:6px;line-height:1.6;}
+  .sectitle{font-size:14px;color:var(--gold);letter-spacing:3px;margin:2px 0 8px;text-align:center;}
+  input,textarea{font-family:inherit;background:#0b0e13;border:1px solid var(--line);color:var(--paper);
+    border-radius:8px;padding:8px;width:100%;font-size:14px;}
+  textarea{height:70px;resize:none;font-size:11px;}
+  .mini{padding:8px 10px;font-size:13px;min-width:auto;}
+
+  /* ===== 弹窗 ===== */
+  #modalWrap{position:fixed;inset:0;z-index:20;display:none;place-items:center;
+    background:rgba(6,8,11,.72);backdrop-filter:blur(3px);padding:20px;}
+  #modalWrap.show{display:grid;}
+  #modal{max-width:400px;width:100%;border-radius:18px;padding:22px;text-align:center;
+    background:linear-gradient(180deg,#1a212c,#10141b);border:1px solid var(--gold);
+    box-shadow:0 0 40px rgba(217,178,90,.25);animation:pop .3s ease;}
+  @keyframes pop{from{transform:scale(.85);opacity:0;}to{transform:scale(1);opacity:1;}}
+  #modal .mi{font-size:56px;margin-bottom:6px;}
+  #modal .mt{font-size:22px;color:var(--gold2);letter-spacing:2px;margin-bottom:8px;}
+  #modal .md{font-size:14px;color:var(--paper);line-height:1.8;margin-bottom:16px;}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="title"><span class="seal">寂</span>寂寞老板修仙传</div>
+    <div class="company" id="companyName">无名工作室</div>
+    <div class="stats">
+      <div class="stat"><div class="k">💰 现金</div><div class="v" id="sCash">0</div></div>
+      <div class="stat"><div class="k">📈 每秒营收</div><div class="v" id="sInc">0</div></div>
+      <div class="stat realm"><div class="k">☯ 境界</div><div class="v" id="sRealm">—</div></div>
+    </div>
+  </header>
+
+  <div id="battle">
+    <div id="stageLabel"></div>
+    <div id="mob" title="点击亲自督战">📄</div>
+    <div id="mobName">项目</div>
+    <div id="hpWrap"><div id="hpBar"></div><div id="hpText"></div></div>
+    <div id="timer"></div>
+    <div id="dpsLine"></div>
+    <div id="floats"></div>
+  </div>
+
+  <div id="panel"></div>
+</div>
+
+<div id="tabs">
+  <div class="tab active" data-tab="emp"><span class="ico">👔</span>员工</div>
+  <div class="tab" data-tab="break"><span class="ico">☯</span>突破</div>
+  <div class="tab" data-tab="prestige"><span class="ico">♻️</span>创业</div>
+  <div class="tab" data-tab="set"><span class="ico">⚙️</span>设置</div>
+</div>
+
+<div id="modalWrap"><div id="modal">
+  <div class="mi" id="modalIco">🎉</div>
+  <div class="mt" id="modalTitle"></div>
+  <div class="md" id="modalDesc"></div>
+  <button class="big" onclick="closeModal()">收下</button>
+</div></div>
+
+<script>
+"use strict";
+//====================== 数据表 ======================
+const REALMS = [
+  {name:'练气期', alias:'摆摊创业', ico:'🏮'},
+  {name:'筑基期', alias:'注册公司', ico:'🏢'},
+  {name:'金丹期', alias:'天使轮融资', ico:'👼'},
+  {name:'元婴期', alias:'A轮融资', ico:'🅰️'},
+  {name:'化神期', alias:'B轮融资', ico:'🅱️'},
+  {name:'炼虚期', alias:'C轮融资', ico:'🌀'},
+  {name:'合体期', alias:'独角兽企业', ico:'🦄'},
+  {name:'大乘期', alias:'上市辅导期', ico:'📊'},
+  {name:'渡劫飞升', alias:'敲钟上市', ico:'🔔'},
+];
+// 员工（对应收徒/灵宠）：被动产出现金 + 团队攻击
+const EMPLOYEES = [
+  {id:'intern',  name:'实习生',   emoji:'🧑‍🎓', rarity:0, baseCost:15,    income:0.15, dps:1,     unlock:0},
+  {id:'front',   name:'前台文员', emoji:'💁',   rarity:1, baseCost:120,   income:1.2,  dps:6,     unlock:0},
+  {id:'sales',   name:'销售专员', emoji:'🤵',   rarity:1, baseCost:1300,  income:9,    dps:32,    unlock:0},
+  {id:'coder',   name:'程序员',   emoji:'👨‍💻', rarity:2, baseCost:14000, income:55,   dps:180,   unlock:1},
+  {id:'design',  name:'设计师',   emoji:'🎨',   rarity:2, baseCost:160000,income:300,  dps:900,   unlock:1},
+  {id:'pm',      name:'产品经理', emoji:'📋',   rarity:3, baseCost:1.9e6, income:1600, dps:4800,  unlock:2},
+  {id:'ops',     name:'运营总监', emoji:'📊',   rarity:3, baseCost:2.4e7, income:8600, dps:26000, unlock:3},
+  {id:'cto',     name:'首席技术官',emoji:'🧠',  rarity:4, baseCost:3.6e8, income:47000,dps:150000,unlock:4},
+  {id:'cfo',     name:'首席财务官',emoji:'💼',  rarity:4, baseCost:5.2e9, income:260000,dps:820000,unlock:5},
+  {id:'hacker',  name:'天才黑客', emoji:'🕶️',   rarity:4, baseCost:8e10,  income:1.5e6,dps:4.6e6, unlock:6},
+];
+const RARITY_NAME=['凡品','良品','上品','极品','仙品'];
+const PROJECTS=[
+  {name:'外包小单',emoji:'📄'},{name:'甲方需求',emoji:'📞'},{name:'竞品狙击',emoji:'⚔️'},
+  {name:'融资路演',emoji:'🎤'},{name:'双十一大促',emoji:'🛒'},{name:'系统上线',emoji:'🚀'},
+  {name:'用户增长',emoji:'📈'},{name:'品牌出海',emoji:'🌏'},{name:'年度述职',emoji:'🗂️'},
+];
+const BOSSES=[
+  {name:'BUG风暴',emoji:'🐞'},{name:'甲方夺命连环催',emoji:'☎️'},{name:'竞品降维打击',emoji:'💥'},
+  {name:'投资人尽职调查',emoji:'🔍'},{name:'监管合规审查',emoji:'📜'},{name:'年终裁员危机',emoji:'🪓'},
+];
+// 二次创业永久加成（对应转生天赋）
+const UPGRADES=[
+  {id:'income',  name:'商业帝国 📈', desc:'全员产出 +30% / 级', base:1,  growth:2,   max:999},
+  {id:'atk',     name:'狼性文化 🐺', desc:'全员攻击 +30% / 级', base:1,  growth:2,   max:999},
+  {id:'discount',name:'人脉网络 🤝', desc:'聘请成本 -5% / 级 (上限-60%)', base:2, growth:2.4, max:12},
+  {id:'seed',    name:'启动资金 💵', desc:'二次创业起步现金 ×10 / 级', base:3, growth:3, max:9},
+  {id:'offline', name:'自动化运营 🤖',desc:'离线收益上限 +2小时 / 级', base:2, growth:2, max:11},
+];
+
+//====================== 常量 ======================
+const KEY='boss_lonely_save';
+const HP_BASE=10, HP_GROWTH=1.55, BOSS_MULT=8, BOSS_TIME=30;
+const REWARD_BASE=4, REWARD_GROWTH=1.5, EXP_RATE=0.6;
+const LAYER_MULT=1.12, REALM_MULT=3, MAX_LAYER=9;
+const LAYER_EXP_BASE=120, LAYER_EXP_GROWTH=1.72, BREAK_MULT=12;
+const MILES=[10,25,50,100,150,200,300,400,500];
+
+//====================== 状态 ======================
+function defaultState(){
+  return {
+    v:1, companyName:'无名工作室',
+    cash:100, exp:0, totalEarned:0,
+    emp:{intern:1},
+    realmIndex:0, layer:1, totalLayers:0,
+    prestige:0, lifetimePrestige:0, upg:{},
+    stage:1, lastSave:Date.now(),
+  };
+}
+let S=defaultState();
+let proj=null, curTab='emp', saveTimer=0, panelTimer=0, lastFrame=performance.now();
+let pendingOffline=null;
+
+//====================== 工具函数 ======================
+function fmt(n){
+  if(!isFinite(n))return '∞';
+  if(n<0)return '0';
+  if(n<10000)return (Math.floor(n*10)/10).toString().replace(/\.0$/,'');
+  const U=[[1e28,'穰'],[1e24,'秭'],[1e20,'垓'],[1e16,'京'],[1e12,'兆'],[1e8,'亿'],[1e4,'万']];
+  for(const[v,u]of U){if(n>=v)return (n/v).toFixed(2)+u;}
+  return Math.floor(n).toString();
+}
+function milesMult(c){let m=1;for(const t of MILES)if(c>=t)m*=2;return m;}
+function nextMile(c){for(const t of MILES)if(c<t)return t;return null;}
+function upgLvl(id){return S.upg[id]||0;}
+function incMult(){return 1+0.30*upgLvl('income');}
+function atkMult(){return 1+0.30*upgLvl('atk');}
+function discount(){return Math.max(0.4,1-0.05*upgLvl('discount'));}
+function offlineCapH(){return 2+2*upgLvl('offline');}
+function seedMoney(){return 100*Math.pow(10,upgLvl('seed'));}
+function passiveMult(){return 1+0.02*S.lifetimePrestige;}
+function cultMult(){return Math.pow(REALM_MULT,S.realmIndex)*Math.pow(LAYER_MULT,S.totalLayers);}
+
+function teamStats(){
+  let inc=0,dps=0;
+  for(const e of EMPLOYEES){
+    const c=S.emp[e.id]||0;
+    if(c>0){const m=milesMult(c);inc+=e.income*c*m;dps+=e.dps*c*m;}
+  }
+  const cm=cultMult(),pas=passiveMult();
+  return {income:inc*cm*incMult()*pas, dps:dps*cm*atkMult()*pas};
+}
+function hireCost(e){return e.baseCost*Math.pow(1.15,S.emp[e.id]||0)*discount();}
+function layerExp(){return LAYER_EXP_BASE*Math.pow(LAYER_EXP_GROWTH,S.totalLayers);}
+function breakExp(){return layerExp()*BREAK_MULT;}
+function projReward(s){return REWARD_BASE*Math.pow(REWARD_GROWTH,s-1);}
+function prestigeGain(){return Math.floor(Math.sqrt(S.totalEarned/1e6));}
+function upgCost(u){return Math.ceil(u.base*Math.pow(u.growth,upgLvl(u.id)));}
+
+//====================== 项目/战斗 ======================
+function spawnProject(){
+  const s=S.stage, boss=(s%10===0);
+  let hp=HP_BASE*Math.pow(HP_GROWTH,s-1);
+  let info;
+  if(boss){info=BOSSES[(Math.floor(s/10)-1)%BOSSES.length];hp*=BOSS_MULT;}
+  else info=PROJECTS[(s-1)%PROJECTS.length];
+  proj={hp:hp,maxHp:hp,isBoss:boss,timer:boss?BOSS_TIME:0,name:info.name,emoji:info.emoji};
+}
+function killProject(){
+  const r=projReward(S.stage);
+  S.cash+=r; S.totalEarned+=r; S.exp+=r*EXP_RATE;
+  floatText('通关！+'+fmt(r),proj.isBoss);
+  S.stage++;
+  spawnProject();
+}
+function clickAttack(){
+  const t=teamStats();
+  const dmg=Math.max(1+S.totalLayers*2, t.dps*1);
+  proj.hp-=dmg;
+  floatText('-'+fmt(dmg),true);
+  if(proj.hp<=0)killProject();
+}
+function floatText(txt,crit){
+  const el=document.createElement('div');
+  el.className='float'+(crit?' crit':'');
+  el.textContent=txt;
+  el.style.left=(38+Math.random()*24)+'%';
+  el.style.top=(34+Math.random()*10)+'%';
+  document.getElementById('floats').appendChild(el);
+  setTimeout(()=>el.remove(),1000);
+}
+
+//====================== 成长：晋升 / 渡劫 ======================
+function canAscend(){return S.layer<MAX_LAYER && S.exp>=layerExp();}
+function ascend(){
+  if(!canAscend())return;
+  S.exp-=layerExp(); S.layer++; S.totalLayers++;
+  renderPanel();
+}
+function canBreak(){return S.layer>=MAX_LAYER && S.realmIndex<REALMS.length-1 && S.exp>=breakExp();}
+function breakthrough(){
+  if(!canBreak())return;
+  S.exp-=breakExp(); S.realmIndex++; S.layer=1; S.totalLayers++;
+  const r=REALMS[S.realmIndex];
+  const last=(S.realmIndex===REALMS.length-1);
+  showModal(r.ico, last?'🔔 敲钟上市！':'突破成功！',
+    last? `恭喜「${S.companyName}」历经九九八十一难，终于<b>敲钟上市</b>，飞升为一代商业传奇！全局产出与战力再度暴涨。`
+        : `渡劫成功！老板境界提升至 <b>${r.name}·${r.alias}</b>。<br>全局营收与战力 ×${REALM_MULT}！`);
+  renderPanel();
+}
+
+//====================== 二次创业（转生） ======================
+function doPrestige(){
+  const g=prestigeGain();
+  if(g<1)return;
+  S.prestige+=g; S.lifetimePrestige+=g;
+  const keepName=S.companyName, upg=S.upg, pr=S.prestige, lp=S.lifetimePrestige;
+  S=defaultState();
+  S.companyName=keepName; S.upg=upg; S.prestige=pr; S.lifetimePrestige=lp;
+  S.cash=seedMoney();
+  S.stage=1; spawnProject();
+  showModal('♻️','二次创业！',`公司重组完毕，你带着 <b>${fmt(g)} 点声望</b> 东山再起。<br>历史声望共 ${fmt(S.lifetimePrestige)}，全局永久加成 +${(S.lifetimePrestige*2)}%。`);
+  save(); renderPanel();
+}
+function buyUpg(id){
+  const u=UPGRADES.find(x=>x.id===id);
+  if(upgLvl(id)>=u.max)return;
+  const c=upgCost(u);
+  if(S.prestige<c)return;
+  S.prestige-=c; S.upg[id]=upgLvl(id)+1;
+  renderPanel();
+}
+
+//====================== 员工 ======================
+function hire(id,bulk){
+  const e=EMPLOYEES.find(x=>x.id===id);
+  if(S.realmIndex<e.unlock)return;
+  let n=bulk||1;
+  for(let i=0;i<n;i++){
+    const c=hireCost(e);
+    if(S.cash<c)break;
+    S.cash-=c; S.emp[e.id]=(S.emp[e.id]||0)+1;
+  }
+  renderPanel();
+}
+function maxHire(id){
+  const e=EMPLOYEES.find(x=>x.id===id);
+  let n=0,cash=S.cash,cnt=S.emp[e.id]||0;
+  while(n<10000){
+    const c=e.baseCost*Math.pow(1.15,cnt)*discount();
+    if(cash<c)break; cash-=c;cnt++;n++;
+  }
+  if(n>0)hire(id,n);
+}
+
+//====================== 存档 ======================
+function save(){S.lastSave=Date.now();try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+function load(){
+  const raw=localStorage.getItem(KEY);
+  if(raw){try{S=Object.assign(defaultState(),JSON.parse(raw));S.upg=S.upg||{};S.emp=S.emp||{};}catch(e){S=defaultState();}}
+  else S=defaultState();
+  // 离线收益
+  if(S.lastSave){
+    const el=(Date.now()-S.lastSave)/1000;
+    const cap=offlineCapH()*3600;
+    const t=Math.min(Math.max(el,0),cap);
+    if(t>10){
+      const g=teamStats().income*t;
+      if(g>0){S.cash+=g;S.totalEarned+=g;pendingOffline={t:t,g:g};}
+    }
+  }
+  spawnProject();
+}
+function exportSave(){return btoa(unescape(encodeURIComponent(JSON.stringify(S))));}
+function importSave(str){
+  try{const o=JSON.parse(decodeURIComponent(escape(atob(str.trim()))));
+    S=Object.assign(defaultState(),o);S.upg=S.upg||{};S.emp=S.emp||{};spawnProject();
+    save();renderPanel();alert('读档成功！');
+  }catch(e){alert('存档字符串无效');}
+}
+function hardReset(){
+  if(confirm('确定要抹去一切、从头再来？此操作不可恢复！')){
+    localStorage.removeItem(KEY);S=defaultState();spawnProject();renderPanel();
+  }
+}
+
+//====================== 弹窗 ======================
+function showModal(ico,title,desc){
+  document.getElementById('modalIco').textContent=ico;
+  document.getElementById('modalTitle').innerHTML=title;
+  document.getElementById('modalDesc').innerHTML=desc;
+  document.getElementById('modalWrap').classList.add('show');
+}
+function closeModal(){document.getElementById('modalWrap').classList.remove('show');}
+
+//====================== 渲染 ======================
+function renderFast(){
+  const t=teamStats();
+  document.getElementById('sCash').textContent=fmt(S.cash);
+  document.getElementById('sInc').textContent=fmt(t.income)+'/秒';
+  const r=REALMS[S.realmIndex];
+  document.getElementById('sRealm').textContent=r.ico+r.name+' '+S.layer+'层';
+  document.getElementById('companyName').textContent=S.companyName+'　·　'+r.alias;
+  // 战斗
+  document.getElementById('stageLabel').innerHTML='第 '+S.stage+' 关'+(proj.isBoss?'<span id="bossTag">大项目</span>':'');
+  document.getElementById('mob').textContent=proj.emoji;
+  document.getElementById('mobName').textContent=proj.name;
+  const pct=Math.max(0,proj.hp/proj.maxHp*100);
+  document.getElementById('hpBar').style.width=pct+'%';
+  document.getElementById('hpText').textContent=fmt(Math.max(0,proj.hp))+' / '+fmt(proj.maxHp);
+  document.getElementById('timer').textContent=proj.isBoss?('⏳ 限时 '+Math.ceil(proj.timer)+' 秒，超时则项目重置'):'';
+  document.getElementById('dpsLine').textContent='⚔ 团队战力 '+fmt(t.dps)+' / 秒　点击项目可亲自督战';
+}
+function el(html){const d=document.createElement('div');d.innerHTML=html;return d.firstElementChild;}
+
+function renderPanel(){
+  const p=document.getElementById('panel');
+  p.innerHTML='';
+  if(curTab==='emp')renderEmp(p);
+  else if(curTab==='break')renderBreak(p);
+  else if(curTab==='prestige')renderPrestige(p);
+  else renderSet(p);
+}
+function renderEmp(p){
+  p.appendChild(el('<div class="sectitle">— 招贤纳士 · 组建上市天团 —</div>'));
+  for(const e of EMPLOYEES){
+    const locked=S.realmIndex<e.unlock;
+    const cnt=S.emp[e.id]||0;
+    if(locked){
+      p.appendChild(el(`<div class="card locked"><div class="row">
+        <div class="emj">🔒</div><div class="grow"><div class="nm">${e.name}
+        <span class="rar r${e.rarity}">${RARITY_NAME[e.rarity]}</span></div>
+        <div class="sub">需晋升至 ${REALMS[e.unlock].name}（${REALMS[e.unlock].alias}）解锁聘请</div></div></div></div>`));
+      continue;
+    }
+    const cost=hireCost(e);
+    const can=S.cash>=cost;
+    const m=milesMult(cnt), nm=nextMile(cnt);
+    const card=el(`<div class="card"><div class="row">
+      <div class="emj">${e.emoji}</div>
+      <div class="grow">
+        <div class="nm">${e.name}<span class="rar r${e.rarity}">${RARITY_NAME[e.rarity]}</span>
+          <span class="own">×${cnt}</span></div>
+        <div class="sub">产出 ${fmt(e.income*cnt*m*cultMult()*incMult()*passiveMult())}/秒 · 战力 ${fmt(e.dps*cnt*m*atkMult()*cultMult()*passiveMult())}
+          ${nm?`· 满 ${nm} 名翻倍`:'· 已满级翻倍'}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <button class="buy ${can?'':'dis'}" data-hire="${e.id}">聘请<span class="c">${fmt(cost)}</span></button>
+        <button class="buy mini" data-max="${e.id}">最大</button>
+      </div>
+    </div></div>`);
+    p.appendChild(card);
+  }
+  p.querySelectorAll('[data-hire]').forEach(b=>b.onclick=()=>hire(b.dataset.hire,1));
+  p.querySelectorAll('[data-max]').forEach(b=>b.onclick=()=>maxHire(b.dataset.max));
+}
+function renderBreak(p){
+  const r=REALMS[S.realmIndex];
+  p.appendChild(el(`<div class="card" style="text-align:center">
+    <div style="font-size:46px">${r.ico}</div>
+    <div class="nm" style="font-size:20px;color:var(--jade)">${r.name} · 第 ${S.layer} 层</div>
+    <div class="sub">现代身份：${r.alias}</div>
+    <div class="sub" style="margin-top:8px">当前全局倍率 ×${fmt(cultMult())}（含声望永久 +${S.lifetimePrestige*2}%）</div>
+  </div>`));
+  // 资历
+  const needLayer=layerExp();
+  const pctL=Math.min(100,S.exp/needLayer*100);
+  p.appendChild(el(`<div class="card">
+    <div class="row"><div class="grow"><div class="nm">📜 资历（经验）</div>
+      <div class="sub">${fmt(S.exp)} / ${fmt(needLayer)}　打项目积累资历</div></div></div>
+    <div class="bar"><i style="width:${pctL}%"></i></div>
+  </div>`));
+  if(S.layer<MAX_LAYER){
+    const can=canAscend();
+    const b=el(`<button class="big ${can?'':'dis'}">☯ 晋升一层（消耗资历 ${fmt(needLayer)}）</button>`);
+    b.onclick=ascend;p.appendChild(b);
+    p.appendChild(el('<div class="hint">每层晋升，全局营收与战力 ×'+LAYER_MULT+'。满 '+MAX_LAYER+' 层后可渡劫突破大境界。</div>'));
+  }else if(S.realmIndex<REALMS.length-1){
+    const can=canBreak();
+    const nextR=REALMS[S.realmIndex+1];
+    const b=el(`<button class="big seal ${can?'':'dis'}">⚡ 渡劫突破 → ${nextR.name}（消耗资历 ${fmt(breakExp())}）</button>`);
+    b.onclick=breakthrough;p.appendChild(b);
+    p.appendChild(el(`<div class="hint">已至本境界巅峰！渡劫成功可突破至 <b>${nextR.name}·${nextR.alias}</b>，全局倍率 ×${REALM_MULT}。<br>最终一劫即「敲钟上市」，飞升商界传奇。</div>`));
+  }else{
+    p.appendChild(el('<div class="hint">🔔 你已敲钟上市，登临商界之巅！<br>可前往「创业」页二次创业，开启更强的新纪元。</div>'));
+  }
+}
+function renderPrestige(p){
+  const g=prestigeGain();
+  p.appendChild(el(`<div class="card" style="text-align:center">
+    <div style="font-size:40px">⭐</div>
+    <div class="nm" style="font-size:19px;color:var(--gold2)">声望（股权）：${fmt(S.prestige)}</div>
+    <div class="sub">历史累计 ${fmt(S.lifetimePrestige)}　·　永久全局加成 +${S.lifetimePrestige*2}%</div>
+  </div>`));
+  const canP=g>=1;
+  const b=el(`<button class="big seal ${canP?'':'dis'}">♻️ 二次创业，收获 ${fmt(g)} 声望</button>`);
+  b.onclick=()=>{if(canP&&confirm('二次创业将重置本局进度（现金/员工/关卡/境界），换取 '+fmt(g)+' 声望与永久加成。确定？'))doPrestige();};
+  p.appendChild(b);
+  p.appendChild(el(`<div class="hint">声望 = √(累计总营收 ÷ 100万)。当前累计营收 ${fmt(S.totalEarned)}。<br>${canP?'越晚重开，收获越多。':'再赚一些营收即可二次创业。'}</div>`));
+  p.appendChild(el('<div class="sectitle">— 永久加成 · 商业心法 —</div>'));
+  for(const u of UPGRADES){
+    const lv=upgLvl(u.id), maxed=lv>=u.max, c=upgCost(u), can=!maxed&&S.prestige>=c;
+    const card=el(`<div class="card"><div class="row">
+      <div class="grow"><div class="nm">${u.name} <span class="own">Lv.${lv}</span></div>
+        <div class="sub">${u.desc}</div></div>
+      <button class="buy ${can?'':'dis'}" data-upg="${u.id}">${maxed?'已满':'升级'}<span class="c">${maxed?'':fmt(c)+' 声望'}</span></button>
+    </div></div>`);
+    p.appendChild(card);
+  }
+  p.querySelectorAll('[data-upg]').forEach(b=>b.onclick=()=>buyUpg(b.dataset.upg));
+}
+function renderSet(p){
+  p.appendChild(el('<div class="sectitle">— 公司设置 —</div>'));
+  const nameCard=el(`<div class="card"><div class="nm">🏷️ 公司名称</div>
+    <div class="sub" style="margin-bottom:8px">给你的商业帝国起个响亮的名字</div>
+    <input id="nameInput" maxlength="12" value="${S.companyName.replace(/"/g,'&quot;')}"></div>`);
+  p.appendChild(nameCard);
+  const ni=nameCard.querySelector('#nameInput');
+  ni.onchange=()=>{S.companyName=(ni.value.trim()||'无名工作室').slice(0,12);save();renderFast();};
+
+  const exp=el(`<div class="card"><div class="nm">💾 存档管理</div>
+    <div class="sub" style="margin:6px 0">导出后妥善保存，可在其它设备导入继续。离线收益上限 ${offlineCapH()} 小时。</div>
+    <textarea id="saveBox" readonly>${exportSave()}</textarea>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="buy" id="copyBtn" style="flex:1">复制存档</button>
+      <button class="buy" id="importBtn" style="flex:1">导入存档</button>
+    </div></div>`);
+  p.appendChild(exp);
+  exp.querySelector('#copyBtn').onclick=()=>{const t=exp.querySelector('#saveBox');t.select();try{document.execCommand('copy');}catch(e){}alert('已复制到剪贴板');};
+  exp.querySelector('#importBtn').onclick=()=>{const s=prompt('粘贴存档字符串：');if(s)importSave(s);};
+
+  const reset=el('<div class="card"><div class="nm">⚠️ 危险操作</div><div class="sub" style="margin:6px 0">彻底清空存档，从练气期重新开始。</div><button class="big seal" id="resetBtn">抹去一切，从头再来</button></div>');
+  p.appendChild(reset);
+  reset.querySelector('#resetBtn').onclick=hardReset;
+
+  p.appendChild(el('<div class="hint">寂寞老板修仙传 · 一款用现代职场演绎修仙挂机的小游戏<br>进度自动保存于本地浏览器</div>'));
+}
+
+//====================== 主循环 ======================
+function loop(now){
+  const dt=Math.min((now-lastFrame)/1000,0.25);lastFrame=now;
+  const t=teamStats();
+  const gain=t.income*dt; S.cash+=gain; S.totalEarned+=gain;
+  if(proj){
+    proj.hp-=t.dps*dt;
+    if(proj.isBoss){
+      proj.timer-=dt;
+      if(proj.timer<=0){proj.hp=proj.maxHp;proj.timer=BOSS_TIME;floatText('⏳项目重置！',true);}
+    }
+    let guard=0;
+    while(proj.hp<=0 && guard++<50)killProject();
+  }
+  saveTimer+=dt; if(saveTimer>5){save();saveTimer=0;}
+  renderFast();
+  panelTimer+=dt; if(panelTimer>0.25){renderPanel();panelTimer=0;}
+  requestAnimationFrame(loop);
+}
+
+//====================== 初始化 ======================
+function init(){
+  load();
+  document.getElementById('mob').onclick=clickAttack;
+  document.querySelectorAll('.tab').forEach(tab=>{
+    tab.onclick=()=>{
+      curTab=tab.dataset.tab;
+      document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===tab));
+      renderPanel();
+    };
+  });
+  renderFast();renderPanel();
+  if(pendingOffline){
+    const h=Math.floor(pendingOffline.t/3600),m=Math.floor(pendingOffline.t%3600/60);
+    showModal('🌙','欢迎回来，老板！',`你挂机 ${h}小时${m}分钟，员工们兢兢业业，共为公司赚得 <b>${fmt(pendingOffline.g)} 现金</b>。`);
+    pendingOffline=null;
+  }
+  window.addEventListener('beforeunload',save);
+  requestAnimationFrame(loop);
+}
+window.closeModal=closeModal;
+init();
+</script>
+</body>
+</html>
