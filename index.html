@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>孤岛方舟 · 生存进化</title>
+<title>末日方舟 · 废土求生</title>
 <style>
   :root{
-    --bg:#0d1512; --bg2:#12201b; --panel:#16241d; --panel2:#1d3128;
-    --ink:#e8f0ea; --muted:#8fa89a; --line:rgba(120,200,160,.18);
-    --grn:#5fd39b; --grn2:#7ff0b8; --amber:#e6b04a; --amber2:#f4c96a;
-    --red:#d9534f; --blue:#57b5e6; --brown:#b07a4b;
-    --hp:#e05555; --food:#e6a04a; --water:#57b5e6; --stam:#7ce0a0;
+    --bg:#12100c; --bg2:#1a1710; --panel:#201c14; --panel2:#2b2519;
+    --ink:#ece6d8; --muted:#a89e88; --line:rgba(200,180,120,.16);
+    --grn:#a3c34a; --grn2:#c8e66a; --amber:#e6b04a; --amber2:#f4c96a;
+    --red:#d9534f; --blue:#8fae8a; --brown:#b07a4b;
+    --hp:#e05555; --food:#e6a04a; --water:#6fb0c8; --stam:#c8e66a;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none;}
   html,body{margin:0;height:100%;overflow:hidden;}
@@ -20,7 +20,7 @@
     display:flex;align-items:center;justify-content:center;
     touch-action:none;
   }
-  #wrap{position:relative;width:100vw;height:100vh;max-width:560px;max-height:1000px;overflow:hidden;background:#0a1310;}
+  #wrap{position:relative;width:100vw;height:100vh;max-width:560px;max-height:1000px;overflow:hidden;background:#0f0d09;}
   canvas{display:block;width:100%;height:100%;image-rendering:auto;}
 
   /* ===== 顶部 HUD ===== */
@@ -34,8 +34,8 @@
               letter-spacing:1px;text-shadow:0 1px 2px rgba(0,0,0,.7);color:#fff;font-weight:600;}
   .bar.hp>i{background:linear-gradient(90deg,#ff7a6b,var(--hp));}
   .bar.food>i{background:linear-gradient(90deg,#f4c96a,var(--food));}
-  .bar.water>i{background:linear-gradient(90deg,#8fd6f7,var(--water));}
-  .bar.stam>i{background:linear-gradient(90deg,#aef7cd,var(--stam));}
+  .bar.water>i{background:linear-gradient(90deg,#a8d0dc,var(--water));}
+  .bar.stam>i{background:linear-gradient(90deg,#e2f4a0,var(--stam));}
 
   #topRight{position:absolute;top:8px;right:10px;z-index:5;text-align:right;pointer-events:none;}
   #clock{font-size:13px;font-weight:700;letter-spacing:1px;text-shadow:0 1px 3px rgba(0,0,0,.8);}
@@ -50,7 +50,7 @@
     animation:tin 2.4s ease forwards;box-shadow:0 4px 14px rgba(0,0,0,.4);max-width:100%;}
   @keyframes tin{8%{opacity:1;transform:translateY(0)}80%{opacity:1}100%{opacity:0;transform:translateY(-6px)}}
 
-  /* 采集/攻击进度圈提示 */
+  /* 搜刮/攻击进度圈提示 */
   #ctxHint{position:absolute;left:50%;bottom:180px;transform:translateX(-50%);z-index:6;
     font-size:12px;color:var(--grn2);text-shadow:0 1px 3px #000;pointer-events:none;text-align:center;}
 
@@ -133,11 +133,13 @@
     margin-bottom:8px;display:flex;align-items:center;gap:10px;}
 
   /* ===== 开场 ===== */
-  #intro{position:absolute;inset:0;z-index:40;background:linear-gradient(160deg,#0a1712,#0e241b);
+  #intro{position:absolute;inset:0;z-index:40;
+    background:radial-gradient(120% 80% at 50% 0%, #3a1e12, #1a1109 55%, #0c0906);
     display:flex;flex-direction:column;align-items:center;justify-content:center;padding:26px;text-align:center;}
   #intro h1{font-size:30px;letter-spacing:6px;margin:0 0 6px;
-    background:linear-gradient(180deg,var(--grn2),var(--grn));-webkit-background-clip:text;background-clip:text;color:transparent;}
-  #intro .en{font-size:11px;letter-spacing:5px;color:var(--muted);margin-bottom:20px;}
+    background:linear-gradient(180deg,#e6b04a,#c34a2e);-webkit-background-clip:text;background-clip:text;color:transparent;
+    text-shadow:0 2px 18px rgba(195,74,46,.3);}
+  #intro .en{font-size:11px;letter-spacing:3px;color:var(--muted);margin-bottom:20px;white-space:nowrap;}
   #intro p{font-size:13px;color:var(--muted);line-height:1.9;max-width:340px;margin:0 0 8px;}
   #intro .keys{font-size:11px;color:var(--muted);opacity:.75;margin:14px 0 26px;line-height:1.8;}
   #startBtn{padding:14px 44px;border-radius:30px;font-size:16px;font-weight:700;letter-spacing:3px;color:#06140d;
@@ -193,7 +195,7 @@
   <div id="controls">
     <div id="joy"><div id="joyKnob"></div></div>
     <div id="actBtns">
-      <div class="rbtn" id="btnA">采集<div class="lbl" id="btnAlbl">采集</div></div>
+      <div class="rbtn" id="btnA">搜刮<div class="lbl" id="btnAlbl">搜刮</div></div>
       <div class="rbtn" id="btnB">🍖</div>
       <div class="rbtn" id="btnC">💧</div>
     </div>
@@ -209,21 +211,21 @@
   <!-- 面板：合成 -->
   <div class="panel" id="pCraft">
     <div class="phead"><h2>🛠️ 合成</h2><div class="xbtn" data-close>✕</div></div>
-    <div class="sub">采集资源合成工具、武器与食物。烹饪需靠近🔥营火。</div>
+    <div class="sub">搜刮资源合成工具、武器与食物。烹饪需靠近🔥火堆。</div>
     <div id="craftList"></div>
   </div>
 
   <!-- 面板：建造 -->
   <div class="panel" id="pBuild">
     <div class="phead"><h2>🏗️ 建造</h2><div class="xbtn" data-close>✕</div></div>
-    <div class="sub">选择建筑后关闭面板，走到空地，点击「放置」按钮安放。墙可挡住野兽，营火可烹饪与照明。</div>
+    <div class="sub">选择建筑后关闭面板，走到空地，点击「放置」按钮安放。墙可挡住丧尸，火堆可烹饪与照明。</div>
     <div id="buildList"></div>
   </div>
 
   <!-- 面板：驯兽 -->
   <div class="panel" id="pPets">
     <div class="phead"><h2>🐾 同伴</h2><div class="xbtn" data-close>✕</div></div>
-    <div class="sub">用🫐浆果喂食温顺动物即可驯服。同伴会跟随你并攻击野兽。</div>
+    <div class="sub">用🥫罐头喂食温顺动物即可驯服。同伴会跟随你并攻击丧尸。</div>
     <div id="petList"></div>
   </div>
 
@@ -236,22 +238,22 @@
     <div class="row" style="margin-top:12px"><button class="big" id="btnReset" style="color:var(--red)">🗑️ 重置游戏（清空进度）</button></div>
     <div class="sub" style="margin-top:16px;line-height:1.9">
       <b style="color:var(--grn2)">玩法说明</b><br>
-      · 摇杆移动，靠近树木🌳/岩石🪨/草丛🌿/矿点后按「采集」收集资源。<br>
-      · 装备工具可加速采集；装备武器点「攻击」可击退野兽🐺。<br>
+      · 摇杆移动，靠近枯树🌲/瓦砾🧱/废弃车🚗/垃圾堆🗑️后按「搜刮」收集资源。<br>
+      · 装备工具可加速搜刮；装备武器点「攻击」可击退丧尸🧟。<br>
       · 饥饿🍖与口渴💧会随时间下降，归零后持续掉血。靠近水边点💧喝水。<br>
-      · 夜晚野兽变强变多，建墙🧱围基地、点营火🔥照明。<br>
-      · 喂🫐浆果驯服🦌🐇等温顺动物成为战斗同伴。<br>
+      · 夜晚丧尸变强变多，建墙🧱围基地、点火堆🔥照明。<br>
+      · 喂🥫罐头驯服🐕🐀等温顺动物成为战斗同伴。<br>
       · 进度自动保存在本地浏览器。
     </div>
   </div>
 
   <!-- 开场 -->
   <div id="intro">
-    <h1>孤岛方舟</h1>
-    <div class="en">S U R V I V A L　·　A R K</div>
-    <p>你在一座荒岛醒来，身无长物。<br>采集、制作、建造、驯服——<br>活过每一个夜晚，成为岛的主人。</p>
-    <div class="keys">电脑：WASD/方向键移动 · 空格采集/攻击 · E食用 · Q喝水<br>手机：左摇杆移动 · 右侧按钮操作</div>
-    <button id="startBtn">开始生存</button>
+    <h1>末日方舟</h1>
+    <div class="en">W A S T E L A N D　·　S U R V I V A L</div>
+    <p>大灾变后的第 1 天，你在废土中醒来。<br>搜刮、制作、筑墙、结伴——<br>熬过每一个丧尸横行的夜晚。</p>
+    <div class="keys">电脑：WASD/方向键移动 · 空格搜刮/攻击 · E进食 · Q喝水<br>手机：左摇杆移动 · 右侧按钮操作</div>
+    <button id="startBtn">进入废土</button>
     <button class="contBtn hidden" id="contBtn">继续上次存档 →</button>
   </div>
 
@@ -288,60 +290,60 @@ const TILE = 48;
 const MAP_W = 60, MAP_H = 60;        // 地图格子数
 const WORLD_W = MAP_W*TILE, WORLD_H = MAP_H*TILE;
 
-// 物品定义
+// 物品定义（末世·废土）
 const ITEMS = {
-  wood:{emo:'🪵', nm:'木材'},
-  stone:{emo:'🪨', nm:'石头'},
-  fiber:{emo:'🌿', nm:'纤维'},
-  berry:{emo:'🫐', nm:'浆果', food:14, eat:true},
+  wood:{emo:'🪵', nm:'木料'},
+  stone:{emo:'🧱', nm:'碎石'},
+  fiber:{emo:'🧵', nm:'布条'},
+  berry:{emo:'🥫', nm:'罐头', food:14, eat:true},
   meat:{emo:'🥩', nm:'生肉', food:10, eat:true, raw:true},
   cooked:{emo:'🍖', nm:'熟肉', food:34, hp:6, eat:true},
-  hide:{emo:'🟫', nm:'兽皮'},
-  metal:{emo:'🔩', nm:'金属'},
-  axe:{emo:'🪓', nm:'石斧', tool:'wood'},
-  pick:{emo:'⛏️', nm:'石镐', tool:'stone'},
-  spear:{emo:'🗡️', nm:'长矛', weapon:12},
-  sword:{emo:'⚔️', nm:'金属剑', weapon:26},
-  torch:{emo:'🔦', nm:'火把', weapon:6, light:true},
+  hide:{emo:'🟫', nm:'皮料'},
+  metal:{emo:'🔩', nm:'废铁'},
+  axe:{emo:'🪓', nm:'消防斧', tool:'wood'},
+  pick:{emo:'⛏️', nm:'撬镐', tool:'stone'},
+  spear:{emo:'🔪', nm:'砍刀', weapon:12},
+  sword:{emo:'🪚', nm:'电锯', weapon:26},
+  torch:{emo:'🔦', nm:'手电', weapon:6, light:true},
 };
 
 // 合成配方
 const RECIPES = [
-  {id:'axe',   out:'axe',   n:1, cost:{wood:3,stone:2},        d:'加速砍伐木材'},
-  {id:'pick',  out:'pick',  n:1, cost:{wood:3,stone:3},        d:'加速开采石头/矿'},
-  {id:'spear', out:'spear', n:1, cost:{wood:4,fiber:3,stone:1},d:'基础武器，可击退野兽'},
+  {id:'axe',   out:'axe',   n:1, cost:{wood:3,stone:2},        d:'加速拆解木料'},
+  {id:'pick',  out:'pick',  n:1, cost:{wood:3,stone:3},        d:'加速开采碎石/废车'},
+  {id:'spear', out:'spear', n:1, cost:{wood:4,fiber:3,stone:1},d:'基础武器，可击退丧尸'},
   {id:'torch', out:'torch', n:1, cost:{wood:2,fiber:2},        d:'夜晚照明，兼作弱武器'},
-  {id:'cooked',out:'cooked',n:1, cost:{meat:1},   fire:true,   d:'烹饪生肉，恢复更多饥饿'},
-  {id:'sword', out:'sword', n:1, cost:{metal:4,wood:2,fiber:2},d:'强力武器，需金属'},
+  {id:'cooked',out:'cooked',n:1, cost:{meat:1},   fire:true,   d:'烤熟生肉，恢复更多饥饿'},
+  {id:'sword', out:'sword', n:1, cost:{metal:4,wood:2,fiber:2},d:'强力武器，需废铁'},
 ];
 
 // 建筑定义
 const BUILDS = {
-  campfire:{emo:'🔥', nm:'营火',   cost:{wood:5,stone:3}, solid:false, light:120, fire:true, d:'烹饪与照明'},
-  wall:    {emo:'🧱', nm:'木墙',   cost:{wood:4},         solid:true,  hp:120,  d:'阻挡野兽'},
-  door:    {emo:'🚪', nm:'木门',   cost:{wood:6},         solid:true,  hp:120, door:true, d:'可开关的墙'},
-  torchP:  {emo:'🕯️', nm:'火把架', cost:{wood:2,fiber:1}, solid:false, light:90, d:'固定照明'},
-  bed:     {emo:'🛏️', nm:'床',     cost:{wood:8,fiber:6,hide:2}, solid:false, bed:true, d:'设为重生点，可睡觉跳过夜晚'},
-  storage: {emo:'📦', nm:'储物箱', cost:{wood:6},         solid:true, hp:80, d:'装饰（存储无限背包）'},
+  campfire:{emo:'🔥', nm:'火堆',   cost:{wood:5,stone:3}, solid:false, light:120, fire:true, d:'烹饪与照明'},
+  wall:    {emo:'🧱', nm:'铁皮墙', cost:{wood:4},         solid:true,  hp:120,  d:'阻挡丧尸'},
+  door:    {emo:'🚪', nm:'铁门',   cost:{wood:6},         solid:true,  hp:120, door:true, d:'可开关的墙'},
+  torchP:  {emo:'💡', nm:'照明灯', cost:{wood:2,fiber:1}, solid:false, light:90, d:'固定照明'},
+  bed:     {emo:'🛏️', nm:'睡袋',   cost:{wood:8,fiber:6,hide:2}, solid:false, bed:true, d:'设为重生点，可睡觉跳过夜晚'},
+  storage: {emo:'📦', nm:'储物箱', cost:{wood:6},         solid:true, hp:80, d:'装饰（背包无上限）'},
 };
 
-// 资源节点类型
+// 资源节点类型（废土搜刮点）
 const NODES = {
-  tree:  {emo:'🌳', nm:'树木', hp:5, give:{wood:[2,4], fiber:[0,1]}, tool:'wood', r:20, regrow:40},
-  pine:  {emo:'🌲', nm:'松树', hp:6, give:{wood:[3,5]}, tool:'wood', r:20, regrow:45},
-  rock:  {emo:'🪨', nm:'岩石', hp:7, give:{stone:[2,4]}, tool:'stone', r:19, regrow:55},
-  ore:   {emo:'⛰️', nm:'矿脉', hp:10, give:{stone:[1,2], metal:[1,3]}, tool:'stone', r:20, regrow:80},
-  bush:  {emo:'🌿', nm:'草丛', hp:2, give:{fiber:[1,3], berry:[1,3]}, tool:null, r:16, regrow:30},
-  berryB:{emo:'🫐', nm:'浆果丛', hp:2, give:{berry:[2,4]}, tool:null, r:16, regrow:25},
+  tree:  {emo:'🌲', nm:'枯树',   hp:5, give:{wood:[2,4], fiber:[0,1]}, tool:'wood', r:20, regrow:40},
+  pine:  {emo:'🥀', nm:'朽木',   hp:6, give:{wood:[3,5]}, tool:'wood', r:20, regrow:45},
+  rock:  {emo:'🧱', nm:'瓦砾堆', hp:7, give:{stone:[2,4]}, tool:'stone', r:19, regrow:55},
+  ore:   {emo:'🚗', nm:'废弃车', hp:10, give:{stone:[1,2], metal:[1,3]}, tool:'stone', r:22, regrow:80},
+  bush:  {emo:'🗑️', nm:'垃圾堆', hp:2, give:{fiber:[1,3], berry:[1,3]}, tool:null, r:16, regrow:30},
+  berryB:{emo:'📦', nm:'补给箱', hp:2, give:{berry:[2,4]}, tool:null, r:16, regrow:25},
 };
 
-// 动物定义
+// 生物定义（幸存动物 & 丧尸）
 const ANIMALS = {
-  rabbit:{emo:'🐇', nm:'野兔', hp:8, spd:1.5, passive:true,  give:{meat:[1,2],hide:[0,1]}, tame:2, r:14},
-  deer:  {emo:'🦌', nm:'鹿',   hp:18,spd:1.3, passive:true,  give:{meat:[2,4],hide:[1,2]}, tame:4, r:18, petDmg:6},
-  boar:  {emo:'🐗', nm:'野猪', hp:26,spd:1.2, passive:false, give:{meat:[3,5],hide:[1,3]}, tame:6, r:18, dmg:8, petDmg:10},
-  wolf:  {emo:'🐺', nm:'恶狼', hp:22,spd:1.9, passive:false, give:{meat:[1,2],hide:[1,2]}, dmg:12, r:16, night:true, petDmg:12},
-  bear:  {emo:'🐻', nm:'棕熊', hp:60,spd:1.5, passive:false, give:{meat:[4,7],hide:[2,4]}, dmg:22, r:22, night:true, petDmg:16},
+  rabbit:{emo:'🐀', nm:'变异鼠', hp:8, spd:1.5, passive:true,  give:{meat:[1,2],hide:[0,1]}, tame:2, r:14, petDmg:5},
+  deer:  {emo:'🐕', nm:'流浪狗', hp:18,spd:1.4, passive:true,  give:{meat:[2,4],hide:[1,2]}, tame:4, r:18, petDmg:8},
+  boar:  {emo:'🐗', nm:'变异野猪', hp:26,spd:1.2, passive:false, give:{meat:[3,5],hide:[1,3]}, tame:6, r:18, dmg:8, petDmg:10},
+  wolf:  {emo:'🧟', nm:'丧尸',   hp:22,spd:1.7, passive:false, give:{meat:[1,2],hide:[1,2]}, dmg:12, r:16, night:true, petDmg:12},
+  bear:  {emo:'🧌', nm:'变异巨兽', hp:60,spd:1.5, passive:false, give:{meat:[4,7],hide:[2,4]}, dmg:22, r:22, night:true, petDmg:16},
 };
 
 /* ---------- 工具函数 ---------- */
@@ -450,7 +452,7 @@ bindTap(document.getElementById('btnB'), ()=>eatBest());
 bindTap(document.getElementById('btnC'), ()=>drink());
 
 /* ============================================================
-   动作：采集 / 攻击 / 放置 / 驯服
+   动作：搜刮 / 攻击 / 放置 / 驯服
    ============================================================ */
 let placeMode=false;
 
@@ -459,8 +461,8 @@ function doAction(){
   const p=G.player;
   if(placeMode){ placeStruct(); return; }
 
-  // 优先级：放置模式 > 攻击目标(装备武器且有敌人) > 采集 > 驯服喂食
-  // 找最近可采集节点
+  // 优先级：放置模式 > 攻击目标(装备武器且有敌人) > 搜刮 > 驯服喂食
+  // 找最近可搜刮节点
   let bestNode=null,bnd=1e9;
   for(const n of G.nodes){
     if(n.dead) continue;
@@ -486,7 +488,7 @@ function doAction(){
 
   // 若装备武器且附近有动物 → 攻击
   if(hasWeapon && bestAnimal && bad<=bnd+30){ attack(bestAnimal); return; }
-  // 若有节点 → 采集
+  // 若有节点 → 搜刮
   if(bestNode){ harvest(bestNode); return; }
   // 否则若有动物（徒手也能打）→ 攻击
   if(bestAnimal){ attack(bestAnimal); return; }
@@ -602,10 +604,10 @@ function drink(){
   if(nearWater()){
     G.player.water=clamp(G.player.water+30,0,100);
     spawnFX(G.player.x,G.player.y-20,'💧','get');
-    toast('喝了口水，清凉解渴');
+    toast('喝了口浑水，勉强解渴');
     refreshHUD();
   } else {
-    toast('附近没有水源，去海边或水塘');
+    toast('附近没有水源，去污水潭边');
   }
 }
 
@@ -724,7 +726,7 @@ function update(dt){
 
   if(p.hp<=0){ die( p.food<=0?'你饿死了…':'你脱水而亡…'); return; }
 
-  /* --- 采集节点再生 --- */
+  /* --- 搜刮节点再生 --- */
   for(const n of G.nodes){
     if(n.dead){ n.regrow-=dt*60; if(n.regrow<=0){ n.dead=false; n.hp=n.hpMax; } }
   }
@@ -749,7 +751,7 @@ function update(dt){
     }
   }
 
-  /* --- 结构：营火照明会消耗？简化为常亮；门无AI --- */
+  /* --- 结构：火堆照明会消耗？简化为常亮；门无AI --- */
 
   /* --- 特效 --- */
   for(let i=G.fx.length-1;i>=0;i--){ const f=G.fx[i]; f.life+=dt; f.y+=f.vy*dt*60; f.vy*=0.94; if(f.life>f.max) G.fx.splice(i,1); }
@@ -771,7 +773,7 @@ function blocked(x,y,r){
     const b=BUILDS[s.t];
     if(b.solid && !(b.door&&s.open)){ if(dist(x,y,s.x,s.y) < r+16) return true; }
   }
-  // 采集节点（大的挡路）
+  // 搜刮节点（大的挡路）
   for(const n of G.nodes){
     if(n.dead) continue;
     if(n.t==='bush'||n.t==='berryB') continue;
@@ -881,7 +883,7 @@ function spawnAnimal(isNight){
    ============================================================ */
 function tryTameNearby(){
   const p=G.player;
-  if((G.inv.berry||0)<=0){ toast('需要🫐浆果喂食'); return; }
+  if((G.inv.berry||0)<=0){ toast('需要🥫罐头喂食'); return; }
   let best=null,bd=1e9;
   for(const a of G.animals){
     if(a.tamed) continue;
@@ -1002,7 +1004,7 @@ function render(){
   // 夜晚遮罩 + 光源
   drawLighting(camX,camY);
 
-  // 采集提示环
+  // 搜刮提示环
   drawCtxRing(camX,camY);
 }
 
@@ -1012,16 +1014,18 @@ function drawGround(camX,camY){
   for(let ty=y0;ty<=y1;ty++)for(let tx=x0;tx<=x1;tx++){
     const sx=tx*TILE-camX, sy=ty*TILE-camY;
     if(isWaterTile(tx,ty)){
+      // 污水/毒潭
       const shade=((tx*7+ty*13)%3);
-      ctx.fillStyle= shade===0?'#16506e':shade===1?'#1a5c7d':'#134a66';
+      ctx.fillStyle= shade===0?'#3a4630':shade===1?'#434f34':'#333f2b';
       ctx.fillRect(sx,sy,TILE+1,TILE+1);
     } else {
+      // 灰褐废土
       const g=((tx*5+ty*11)%4);
-      ctx.fillStyle= g===0?'#22432f':g===1?'#25492f':g===2?'#284d33':'#213f2b';
+      ctx.fillStyle= g===0?'#3a352b':g===1?'#403a2f':g===2?'#443d31':'#352f26';
       ctx.fillRect(sx,sy,TILE+1,TILE+1);
-      // 沙滩过渡：靠近水
+      // 干裂过渡：靠近污水
       if(isWaterTile(tx-1,ty)||isWaterTile(tx+1,ty)||isWaterTile(tx,ty-1)||isWaterTile(tx,ty+1)){
-        ctx.fillStyle='rgba(196,178,120,.28)'; ctx.fillRect(sx,sy,TILE+1,TILE+1);
+        ctx.fillStyle='rgba(120,108,84,.30)'; ctx.fillRect(sx,sy,TILE+1,TILE+1);
       }
     }
   }
@@ -1095,7 +1099,7 @@ function drawLighting(camX,camY){
   ctx.fillStyle=`rgba(4,10,26,${dark})`;
   ctx.fillRect(0,0,VW,VH);
 
-  // 光源：玩家自身微光 + 火把武器 + 营火/火把架建筑
+  // 光源：玩家自身微光 + 火把武器 + 火堆/火把架建筑
   ctx.globalCompositeOperation='destination-out';
   const lights=[];
   const p=G.player;
@@ -1148,9 +1152,9 @@ function drawCtxRing(camX,camY){
     ctx.strokeStyle= kind==='animal'?'rgba(255,120,110,.8)':'rgba(127,240,184,.85)';
     ctx.lineWidth=2; ctx.setLineDash([5,5]);
     ctx.beginPath(); ctx.arc(sx,sy-r*0.2,r,0,7); ctx.stroke(); ctx.setLineDash([]);
-    setBtnLabel(kind==='animal'?'攻击':'采集');
+    setBtnLabel(kind==='animal'?'攻击':'搜刮');
   } else if(placeMode){ setBtnLabel('放置'); }
-  else setBtnLabel('采集');
+  else setBtnLabel('搜刮');
 }
 
 /* ============================================================
@@ -1186,7 +1190,7 @@ function refreshHUD(){
 function setBar(id,frac){ document.getElementById(id).style.transform='scaleX('+clamp(frac,0,1)+')'; }
 
 let btnLabelCache='';
-function setBtnLabel(t){ if(t===undefined) t=btnLabelCache||'采集'; if(t===btnLabelCache) return; btnLabelCache=t; btnAlbl.textContent=t; btnA.childNodes[0].nodeValue=''; }
+function setBtnLabel(t){ if(t===undefined) t=btnLabelCache||'搜刮'; if(t===btnLabelCache) return; btnLabelCache=t; btnAlbl.textContent=t; btnA.childNodes[0].nodeValue=''; }
 
 /* Hotbar */
 const hotbarEl=document.getElementById('hotbar');
@@ -1236,7 +1240,7 @@ function closePanel(){
 function renderInv(){
   const g=document.getElementById('invGrid'); g.innerHTML='';
   const keys=Object.keys(G.inv).filter(k=>G.inv[k]>0);
-  if(keys.length===0){ g.innerHTML='<div class="sub" style="grid-column:1/-1">背包空空如也，去采集吧。</div>'; return; }
+  if(keys.length===0){ g.innerHTML='<div class="sub" style="grid-column:1/-1">背包空空如也，去搜刮吧。</div>'; return; }
   for(const k of keys){
     const it=ITEMS[k]; if(!it) continue;
     const c=document.createElement('div'); c.className='cell';
@@ -1257,10 +1261,10 @@ function renderCraft(){
     const costStr=Object.entries(r.cost).map(([k,v])=>`${ITEMS[k].emo}${v}`).join(' ');
     const div=document.createElement('div'); div.className='recipe';
     div.innerHTML=`<div class="emo">${it.emo}</div>
-      <div class="info"><div class="rn">${it.nm}${r.fire?'<span class="tag">需🔥营火</span>':''}${it.weapon?'<span class="tag">武器'+it.weapon+'</span>':''}${it.tool?'<span class="tag">工具</span>':''}</div>
+      <div class="info"><div class="rn">${it.nm}${r.fire?'<span class="tag">需🔥火堆</span>':''}${it.weapon?'<span class="tag">武器'+it.weapon+'</span>':''}${it.tool?'<span class="tag">工具</span>':''}</div>
       <div class="rc">材料：${costStr}</div><div class="rd">${r.d}</div></div>`;
     const btn=document.createElement('button');
-    btn.className='cbtn'+(can?'':' dim'); btn.textContent= (r.fire&&!nearFire)?'需营火': (hasItems(r.cost)?'合成':'缺材料');
+    btn.className='cbtn'+(can?'':' dim'); btn.textContent= (r.fire&&!nearFire)?'需火堆': (hasItems(r.cost)?'合成':'缺材料');
     btn.addEventListener('click',()=>{ craft(r); });
     div.appendChild(btn);
     l.appendChild(div);
@@ -1272,7 +1276,7 @@ function anyFireNearby(){
 }
 function craft(r){
   const nearFire=anyFireNearby();
-  if(r.fire && !nearFire){ toast('需要靠近🔥营火烹饪'); return; }
+  if(r.fire && !nearFire){ toast('需要靠近🔥火堆烹饪'); return; }
   if(!hasItems(r.cost)){ toast('材料不足'); return; }
   payItems(r.cost); addItem(r.out, r.n);
   toast('合成了 '+ITEMS[r.out].nm+' ×'+r.n);
@@ -1303,7 +1307,7 @@ function renderBuild(){
   // 取消放置按钮
   if(placeMode){
     const c=document.createElement('button'); c.className='big'; c.style.marginTop='6px';
-    c.textContent='✕ 取消放置模式'; c.addEventListener('click',()=>{ placeMode=false; G.selBuild=null; setBtnLabel('采集'); renderBuild(); });
+    c.textContent='✕ 取消放置模式'; c.addEventListener('click',()=>{ placeMode=false; G.selBuild=null; setBtnLabel('搜刮'); renderBuild(); });
     l.appendChild(c);
   }
 }
@@ -1313,13 +1317,13 @@ function renderPets(){
   const l=document.getElementById('petList'); l.innerHTML='';
   const tameBtn=document.createElement('button');
   tameBtn.className='big'; tameBtn.style.marginBottom='12px';
-  tameBtn.innerHTML='🫐 喂食驯服附近动物　（背包浆果：'+(G.inv.berry||0)+'）';
+  tameBtn.innerHTML='🥫 喂食驯服附近动物　（背包罐头：'+(G.inv.berry||0)+'）';
   tameBtn.addEventListener('click',()=>{ tryTameNearby(); });
   l.appendChild(tameBtn);
 
   if(G.pets.length===0){
     const d=document.createElement('div'); d.className='sub';
-    d.textContent='暂无同伴。靠近🐇野兔 / 🦌鹿 / 🐗野猪，反复喂食🫐浆果即可驯服。';
+    d.textContent='暂无同伴。靠近🐀变异鼠 / 🐕流浪狗 / 🐗变异野猪，反复喂食🥫罐头即可驯服。';
     l.appendChild(d); return;
   }
   for(const pet of G.pets){
@@ -1327,7 +1331,7 @@ function renderPets(){
     const div=document.createElement('div'); div.className='pet';
     div.innerHTML=`<div style="font-size:30px">${d.emo}</div>
       <div style="flex:1"><div style="font-weight:600">${d.nm} <span class="tag">攻击 ${d.petDmg||6}</span></div>
-      <div class="sub" style="margin:2px 0 0">生命 ${Math.round(pet.hp)}/${pet.hpMax} · 自动跟随并攻击野兽</div></div>`;
+      <div class="sub" style="margin:2px 0 0">生命 ${Math.round(pet.hp)}/${pet.hpMax} · 自动跟随并攻击丧尸</div></div>`;
     const rel=document.createElement('button'); rel.className='cbtn dim'; rel.textContent='放归';
     rel.addEventListener('click',()=>{ G.pets=G.pets.filter(x=>x!==pet); pet.tamed=false; pet.hp=pet.hpMax; G.animals.push(pet); renderPets(); toast('放归了 '+d.nm); });
     div.appendChild(rel); l.appendChild(div);
@@ -1407,7 +1411,7 @@ resize();
   const has=!!localStorage.getItem(SAVE_KEY);
   if(has) document.getElementById('contBtn').classList.remove('hidden');
 })();
-setBtnLabel('采集');
+setBtnLabel('搜刮');
 raf=requestAnimationFrame(loop);
 </script>
 </body>
