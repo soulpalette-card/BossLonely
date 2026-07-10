@@ -184,6 +184,7 @@
     <div class="mbtn" data-panel="inv">🎒</div>
     <div class="mbtn" data-panel="craft">🛠️</div>
     <div class="mbtn" data-panel="build">🏗️</div>
+    <div class="mbtn" data-panel="tech">🔬</div>
     <div class="mbtn" data-panel="pets">🐾</div>
     <div class="mbtn" data-panel="settings">⚙️</div>
   </div>
@@ -222,6 +223,13 @@
     <div id="buildList"></div>
   </div>
 
+  <!-- 面板：科技 -->
+  <div class="panel" id="pTech">
+    <div class="phead"><h2>🔬 科技研究</h2><div class="xbtn" data-close>✕</div></div>
+    <div class="sub">研究点来自：击杀敌人、每日存活(+5)、挺过尸潮夜(+25)。解锁科技开启枪械、护甲、哨戒炮等。当前研究点：<b id="techPts" style="color:var(--amber2)">0</b> 🔬</div>
+    <div id="techList"></div>
+  </div>
+
   <!-- 面板：驯兽 -->
   <div class="panel" id="pPets">
     <div class="phead"><h2>🐾 同伴</h2><div class="xbtn" data-close>✕</div></div>
@@ -239,9 +247,11 @@
     <div class="sub" style="margin-top:16px;line-height:1.9">
       <b style="color:var(--grn2)">玩法说明</b><br>
       · 摇杆移动，靠近枯树🌲/瓦砾🧱/废弃车🚗/垃圾堆🗑️后按「搜刮」收集资源。<br>
-      · 装备工具可加速搜刮；装备武器点「攻击」可击退丧尸🧟。<br>
+      · 装备工具可加速搜刮；近战武器点「攻击」击退丧尸🧟。<br>
+      · 装备🔫枪械后点「射击」远程开火，消耗🧨弹药，自动瞄准最近目标。<br>
       · 饥饿🍖与口渴💧会随时间下降，归零后持续掉血。靠近水边点💧喝水。<br>
-      · 夜晚丧尸变强变多，建墙🧱围基地、点火堆🔥照明。<br>
+      · 🔬科技研究：击杀/存活/挺过尸潮获得研究点，解锁枪械、护甲、哨戒炮等。<br>
+      · 🩸血月尸潮：第3天起每3天一场，丧尸成群围攻并出现👹暴君，建墙🧱、放哨戒炮🔫、点火堆🔥死守。<br>
       · 喂🥫罐头驯服🐕🐀等温顺动物成为战斗同伴。<br>
       · 进度自动保存在本地浏览器。
     </div>
@@ -251,7 +261,7 @@
   <div id="intro">
     <h1>末日方舟</h1>
     <div class="en">W A S T E L A N D　·　S U R V I V A L</div>
-    <p>大灾变后的第 1 天，你在废土中醒来。<br>搜刮、制作、筑墙、结伴——<br>熬过每一个丧尸横行的夜晚。</p>
+    <p>大灾变后的第 1 天，你在废土中醒来。<br>搜刮造枪、研究科技、筑墙结伴——<br>死守每一场血月尸潮之夜。</p>
     <div class="keys">电脑：WASD/方向键移动 · 空格搜刮/攻击 · E进食 · Q喝水<br>手机：左摇杆移动 · 右侧按钮操作</div>
     <button id="startBtn">进入废土</button>
     <button class="contBtn hidden" id="contBtn">继续上次存档 →</button>
@@ -300,21 +310,29 @@ const ITEMS = {
   cooked:{emo:'🍖', nm:'熟肉', food:34, hp:6, eat:true},
   hide:{emo:'🟫', nm:'皮料'},
   metal:{emo:'🔩', nm:'废铁'},
+  ammo:{emo:'🧨', nm:'弹药'},
   axe:{emo:'🪓', nm:'消防斧', tool:'wood'},
   pick:{emo:'⛏️', nm:'撬镐', tool:'stone'},
   spear:{emo:'🔪', nm:'砍刀', weapon:12},
   sword:{emo:'🪚', nm:'电锯', weapon:26},
   torch:{emo:'🔦', nm:'手电', weapon:6, light:true},
+  pistol:{emo:'🔫', nm:'手枪', ranged:20, rof:0.42, bspd:520},
+  rifle:{emo:'🔫', nm:'步枪', ranged:34, rof:0.26, bspd:680},
+  medkit:{emo:'💊', nm:'医疗包', heal:45, use:true},
 };
 
-// 合成配方
+// 合成配方（tech 字段表示需先解锁对应科技）
 const RECIPES = [
   {id:'axe',   out:'axe',   n:1, cost:{wood:3,stone:2},        d:'加速拆解木料'},
   {id:'pick',  out:'pick',  n:1, cost:{wood:3,stone:3},        d:'加速开采碎石/废车'},
   {id:'spear', out:'spear', n:1, cost:{wood:4,fiber:3,stone:1},d:'基础武器，可击退丧尸'},
   {id:'torch', out:'torch', n:1, cost:{wood:2,fiber:2},        d:'夜晚照明，兼作弱武器'},
   {id:'cooked',out:'cooked',n:1, cost:{meat:1},   fire:true,   d:'烤熟生肉，恢复更多饥饿'},
-  {id:'sword', out:'sword', n:1, cost:{metal:4,wood:2,fiber:2},d:'强力武器，需废铁'},
+  {id:'sword', out:'sword', n:1, cost:{metal:4,wood:2,fiber:2},tech:'saw',     d:'强力近战，需废铁'},
+  {id:'medkit',out:'medkit',n:1, cost:{fiber:3,hide:1,berry:1},tech:'medic',   d:'快速恢复大量体力'},
+  {id:'ammo',  out:'ammo',  n:5, cost:{metal:2,fiber:1},       tech:'firearms',d:'枪械弹药 ×5'},
+  {id:'pistol',out:'pistol',n:1, cost:{metal:5,wood:2},        tech:'firearms',d:'远程手枪，消耗弹药'},
+  {id:'rifle', out:'rifle', n:1, cost:{metal:10,wood:3,fiber:2},tech:'rifle',  d:'远程步枪，威力更高'},
 ];
 
 // 建筑定义
@@ -322,9 +340,10 @@ const BUILDS = {
   campfire:{emo:'🔥', nm:'火堆',   cost:{wood:5,stone:3}, solid:false, light:120, fire:true, d:'烹饪与照明'},
   wall:    {emo:'🧱', nm:'铁皮墙', cost:{wood:4},         solid:true,  hp:120,  d:'阻挡丧尸'},
   door:    {emo:'🚪', nm:'铁门',   cost:{wood:6},         solid:true,  hp:120, door:true, d:'可开关的墙'},
-  torchP:  {emo:'💡', nm:'照明灯', cost:{wood:2,fiber:1}, solid:false, light:90, d:'固定照明'},
-  bed:     {emo:'🛏️', nm:'睡袋',   cost:{wood:8,fiber:6,hide:2}, solid:false, bed:true, d:'设为重生点，可睡觉跳过夜晚'},
+  torchP:  {emo:'💡', nm:'照明灯', cost:{wood:2,fiber:1}, solid:false, light:90, tech:'light', d:'固定照明'},
+  bed:     {emo:'🛏️', nm:'睡袋',   cost:{wood:8,fiber:6,hide:2}, solid:false, bed:true, d:'设为重生点'},
   storage: {emo:'📦', nm:'储物箱', cost:{wood:6},         solid:true, hp:80, d:'装饰（背包无上限）'},
+  turret:  {emo:'🔫', nm:'哨戒炮', cost:{metal:12,wood:4}, solid:false, hp:100, turret:true, tech:'turret', d:'自动射击附近丧尸'},
 };
 
 // 资源节点类型（废土搜刮点）
@@ -344,6 +363,19 @@ const ANIMALS = {
   boar:  {emo:'🐗', nm:'变异野猪', hp:26,spd:1.2, passive:false, give:{meat:[3,5],hide:[1,3]}, tame:6, r:18, dmg:8, petDmg:10},
   wolf:  {emo:'🧟', nm:'丧尸',   hp:22,spd:1.7, passive:false, give:{meat:[1,2],hide:[1,2]}, dmg:12, r:16, night:true, petDmg:12},
   bear:  {emo:'🧌', nm:'变异巨兽', hp:60,spd:1.5, passive:false, give:{meat:[4,7],hide:[2,4]}, dmg:22, r:22, night:true, petDmg:16},
+  brute: {emo:'👹', nm:'丧尸暴君', hp:240,spd:1.25,passive:false, give:{meat:[6,10],hide:[3,5],metal:[2,5],ammo:[3,6]}, dmg:34, r:28, night:true, boss:true, petDmg:0},
+};
+
+// 科技树（消耗研究点🔬，req 为前置科技）
+const TECH = {
+  light:    {nm:'照明工程', emo:'💡', cost:8,  req:[],           d:'解锁「照明灯」建造'},
+  logistics:{nm:'高效搜刮', emo:'♻️', cost:12, req:[],           d:'所有搜刮产出 +50%'},
+  medic:    {nm:'战地医疗', emo:'💊', cost:14, req:[],           d:'解锁「医疗包」合成'},
+  saw:      {nm:'动力刃具', emo:'🪚', cost:16, req:[],           d:'解锁「电锯」合成'},
+  armor:    {nm:'防护装甲', emo:'🦺', cost:26, req:['saw'],      d:'受到伤害减少 35%'},
+  firearms: {nm:'火器制造', emo:'🔫', cost:24, req:[],           d:'解锁「手枪」与「弹药」合成'},
+  rifle:    {nm:'步枪工艺', emo:'🎯', cost:36, req:['firearms'], d:'解锁「步枪」合成'},
+  turret:   {nm:'自动防御', emo:'🛡️', cost:40, req:['firearms'], d:'解锁「哨戒炮」建造'},
 };
 
 /* ---------- 工具函数 ---------- */
@@ -364,12 +396,14 @@ function newGame(){
              hpMax:100, atkCd:0, invuln:0 },
     inv:{ wood:0, stone:0, fiber:0, berry:3, meat:0 },
     equip:null,                  // 装备的工具/武器 id
-    hotbar:['axe','pick','spear','torch'],
-    nodes:[], animals:[], structs:[], pets:[], drops:[], fx:[],
+    hotbar:['axe','pick','spear','torch','pistol','rifle'],
+    nodes:[], animals:[], structs:[], pets:[], drops:[], fx:[], bullets:[],
     respawn:null,                // 床的位置
     selBuild:null,               // 建造选择
     spawnAcc:0, animalAcc:0,
-    stats:{ harvested:0, killed:0, tamed:0, built:0, daysSurvived:0 },
+    tech:{ points:0, unlocked:[] }, // 科技树
+    horde:{ active:false, doneDay:0, warned:0 }, // 尸潮夜状态
+    stats:{ harvested:0, killed:0, tamed:0, built:0, daysSurvived:0, bossKilled:0 },
   };
   genWorld();
 }
@@ -398,11 +432,11 @@ function mkNode(t,x,y){
   return {t,x,y,hp:d.hp,hpMax:d.hp,dead:false,regrow:0};
 }
 let AID=1;
-function mkAnimal(t,x,y){
+function mkAnimal(t,x,y,mob){
   const d=ANIMALS[t];
   return {id:AID++, t, x, y, hp:d.hp, hpMax:d.hp, dir:rnd(0,Math.PI*2),
     vx:0,vy:0, wander:0, aggro:0, hurt:0, tameProg:0, fleeT:0,
-    tamed:false, atkCd:0};
+    tamed:false, atkCd:0, hordeMob:!!mob};
 }
 
 /* ============================================================
@@ -415,7 +449,7 @@ window.addEventListener('keydown',e=>{
   if(e.key===' ') doAction();
   if(e.key.toLowerCase()==='e') eatBest();
   if(e.key.toLowerCase()==='q') drink();
-  if(['1','2','3','4'].includes(e.key)) selectHotbar(+e.key-1);
+  if(['1','2','3','4','5','6'].includes(e.key)) selectHotbar(+e.key-1);
 });
 window.addEventListener('keyup',e=>{ keys[e.key.toLowerCase()]=false; });
 
@@ -484,15 +518,38 @@ function doAction(){
   }
 
   const eq = G.equip ? ITEMS[G.equip] : null;
-  const hasWeapon = eq && eq.weapon;
 
-  // 若装备武器且附近有动物 → 攻击
+  // 装备枪械 → 远程射击（无视距离，朝最近敌人或朝向开火）
+  if(eq && eq.ranged){ fireGun(eq); return; }
+
+  const hasWeapon = eq && eq.weapon;
+  // 若装备近战武器且附近有动物 → 攻击
   if(hasWeapon && bestAnimal && bad<=bnd+30){ attack(bestAnimal); return; }
   // 若有节点 → 搜刮
   if(bestNode){ harvest(bestNode); return; }
   // 否则若有动物（徒手也能打）→ 攻击
   if(bestAnimal){ attack(bestAnimal); return; }
   toast('附近没有可操作的目标');
+}
+
+/* 远程开火 */
+function fireGun(eq){
+  const p=G.player;
+  if(p.atkCd>0) return;
+  if((G.inv.ammo||0)<=0){ toast('没有弹药，去合成🧨'); return; }
+  G.inv.ammo--; if(G.inv.ammo<=0) delete G.inv.ammo;
+  p.atkCd=eq.rof||0.4;
+  // 瞄准最近敌人
+  let tgt=null,td=1e9;
+  for(const a of G.animals){ if(a.tamed) continue; const dd=dist(p.x,p.y,a.x,a.y); if(dd<560 && dd<td){td=dd;tgt=a;} }
+  let ax=p.dir.x, ay=p.dir.y;
+  if(tgt){ const ang=Math.atan2(tgt.y-p.y,tgt.x-p.x); ax=Math.cos(ang); ay=Math.sin(ang); p.dir.x=ax; p.dir.y=ay; }
+  const spd=eq.bspd||550;
+  spawnBullet(p.x+ax*16, p.y+ay*16, ax*spd, ay*spd, eq.ranged, 'player');
+  spawnFX(p.x+ax*20, p.y+ay*20, '💥','chip');
+}
+function spawnBullet(x,y,vx,vy,dmg,owner){
+  G.bullets.push({x,y,vx,vy,dmg,owner,life:0,max:1.1});
 }
 
 function harvest(n){
@@ -509,13 +566,16 @@ function harvest(n){
   facePoint(n.x,n.y);
   if(n.hp<=0){
     n.dead=true; n.regrow=d.regrow*60;   // 帧数近似（用秒*60）
+    const boost = hasTech('logistics')?1.5:1;   // 高效搜刮科技
     for(const k in d.give){
-      const amt=rrange(d.give[k]);
+      let amt=rrange(d.give[k]);
+      if(boost>1) amt=Math.round(amt*boost);
       if(amt>0) dropAt(n.x+rnd(-12,12), n.y+rnd(-12,12), k, amt);
     }
     G.stats.harvested++;
   }
 }
+function hasTech(id){ return G.tech && G.tech.unlocked.indexOf(id)>=0; }
 
 function attack(a){
   const p=G.player;
@@ -544,7 +604,12 @@ function killAnimal(a){
   spawnFX(a.x,a.y,'💥','chip');
   G.animals=G.animals.filter(x=>x!==a);
   G.stats.killed++;
+  // 研究点：击杀敌对+3 / 温顺+1 / Boss+30
+  const pts = d.boss?30 : (d.passive?1:3);
+  addTechPoints(pts);
+  if(d.boss){ G.stats.bossKilled++; spawnFX(a.x,a.y-30,'击杀 '+d.nm,'get'); toast('💀 击杀「'+d.nm+'」！+'+pts+'🔬'); }
 }
+function addTechPoints(n){ G.tech.points += n; }
 
 function facePoint(x,y){
   const p=G.player;
@@ -687,9 +752,15 @@ function update(dt){
 
   /* --- 时间推进：每现实秒 = 3 游戏分钟 → 一整天 ≈ 8 分钟 --- */
   G.time += dt*3.0;
-  if(G.time>=1440){ G.time-=1440; G.day++; G.stats.daysSurvived++; toast('🌅 第 '+G.day+' 天'); }
+  if(G.time>=1440){ G.time-=1440; G.day++; G.stats.daysSurvived++;
+    addTechPoints(5); toast('🌅 第 '+G.day+' 天　+5🔬');
+    if(isHordeDay(G.day)) toast('⚠️ 今夜血月尸潮，加固防线！');
+  }
 
   const isNight = G.time<5*60 || G.time>19*60;
+
+  /* --- 尸潮夜管理 --- */
+  updateHorde(dt, isNight);
 
   /* --- 移动 --- */
   let mx=0,my=0;
@@ -741,7 +812,7 @@ function update(dt){
   /* --- 同伴宠物 --- */
   updatePets(dt);
 
-  /* --- 生成动物：维持数量 --- */
+  /* --- 生成动物：维持数量（尸潮夜时更凶猛，见 updateHorde） --- */
   G.animalAcc+=dt;
   if(G.animalAcc>4){
     G.animalAcc=0;
@@ -751,12 +822,104 @@ function update(dt){
     }
   }
 
-  /* --- 结构：火堆照明会消耗？简化为常亮；门无AI --- */
+  /* --- 子弹 --- */
+  updateBullets(dt);
+
+  /* --- 哨戒炮 --- */
+  updateTurrets(dt);
 
   /* --- 特效 --- */
   for(let i=G.fx.length-1;i>=0;i--){ const f=G.fx[i]; f.life+=dt; f.y+=f.vy*dt*60; f.vy*=0.94; if(f.life>f.max) G.fx.splice(i,1); }
 
   refreshHUD();
+}
+
+/* ---------- 尸潮夜 ---------- */
+function isHordeDay(day){ return day>=3 && day%3===0; }   // 第3天起每3天一场血月
+function updateHorde(dt, isNight){
+  const h=G.horde;
+  // 开场：血月日傍晚(≥18:00)触发，横跨午夜，持续到天亮
+  if(!h.active && isHordeDay(G.day) && G.time>=18*60 && h.doneDay!==G.day){
+    h.active=true; h.acc=0; h.doneDay=G.day;
+    toast('🩸 血月降临！丧尸尸潮来袭！');
+    spawnBrute();
+    for(let i=0;i<6;i++) spawnHordeZombie();
+  }
+  if(h.active){
+    h.acc=(h.acc||0)+dt;
+    if(h.acc>2.2){ h.acc=0;
+      const mobs=G.animals.filter(a=>a.hordeMob&&!a.tamed).length;
+      if(mobs<30){ const k=1+(Math.random()<0.55?1:0); for(let i=0;i<k;i++) spawnHordeZombie(); }
+      // 午夜前后再刷暴君
+      if(!G.animals.some(a=>ANIMALS[a.t].boss) && Math.random()<0.22) spawnBrute();
+    }
+    // 天亮才退潮：白昼且非傍晚起始窗口(<18:00)，避免刚在黄昏开场就误判
+    if(!isNight && G.time<18*60){
+      h.active=false;
+      addTechPoints(25);
+      toast('☀️ 尸潮退去，你挺过了血月！+25🔬');
+    }
+  }
+}
+function spawnHordeZombie(){
+  const p=G.player;
+  let x,y,tries=0;
+  do{ const ang=rnd(0,Math.PI*2), rad=rnd(340,520);
+      x=clamp(p.x+Math.cos(ang)*rad,60,WORLD_W-60);
+      y=clamp(p.y+Math.sin(ang)*rad,60,WORLD_H-60); tries++;
+  }while(isWaterPx(x,y)&&tries<12);
+  if(isWaterPx(x,y)) return;
+  const t = Math.random()<0.22?'bear':'wolf';
+  G.animals.push(mkAnimal(t,x,y,true));
+}
+function spawnBrute(){
+  const p=G.player;
+  let x,y,tries=0;
+  do{ const ang=rnd(0,Math.PI*2), rad=rnd(300,460);
+      x=clamp(p.x+Math.cos(ang)*rad,60,WORLD_W-60);
+      y=clamp(p.y+Math.sin(ang)*rad,60,WORLD_H-60); tries++;
+  }while(isWaterPx(x,y)&&tries<12);
+  if(isWaterPx(x,y)) return;
+  G.animals.push(mkAnimal('brute',x,y,true));
+  spawnFX(x,y-30,'👹 丧尸暴君','get');
+}
+
+/* ---------- 子弹 ---------- */
+function updateBullets(dt){
+  for(let i=G.bullets.length-1;i>=0;i--){
+    const b=G.bullets[i];
+    b.x+=b.vx*dt; b.y+=b.vy*dt; b.life+=dt;
+    let hit=false;
+    if(isWaterPx(b.x,b.y)){ /* 子弹越过水面继续 */ }
+    // 命中实体墙
+    for(const s of G.structs){ const bd=BUILDS[s.t]; if(bd.solid && !(bd.door&&s.open) && dist(b.x,b.y,s.x,s.y)<16){ hit=true; break; } }
+    if(!hit) for(const a of G.animals){
+      if(a.tamed) continue;
+      if(dist(b.x,b.y,a.x,a.y) < ANIMALS[a.t].r+4){
+        a.hp-=b.dmg; a.hurt=0.3; a.aggro=10;
+        spawnFX(a.x,a.y-14,'-'+b.dmg,'dmg');
+        if(a.hp<=0) killAnimal(a);
+        hit=true; break;
+      }
+    }
+    if(hit || b.life>b.max || b.x<0||b.y<0||b.x>WORLD_W||b.y>WORLD_H) G.bullets.splice(i,1);
+  }
+}
+
+/* ---------- 哨戒炮 ---------- */
+function updateTurrets(dt){
+  for(const s of G.structs){
+    const b=BUILDS[s.t]; if(!b.turret) continue;
+    s.cd=(s.cd||0)-dt;
+    if(s.cd>0) continue;
+    let tgt=null,td=1e9;
+    for(const a of G.animals){ if(a.tamed) continue; const dd=dist(s.x,s.y,a.x,a.y); if(dd<230 && dd<td){td=dd;tgt=a;} }
+    if(tgt){
+      s.cd=0.5;
+      const ang=Math.atan2(tgt.y-s.y,tgt.x-s.x);
+      spawnBullet(s.x+Math.cos(ang)*14, s.y+Math.sin(ang)*14, Math.cos(ang)*560, Math.sin(ang)*560, 16, 'turret');
+    }
+  }
 }
 
 function tryMove(ent, dx, dy){
@@ -794,7 +957,8 @@ function updateAnimals(dt, isNight){
 
     let tx=0,ty=0, spd=d.spd*40;
     const hostile = !d.passive;
-    const willChase = hostile && dp<220 && (!d.night || isNight || a.aggro>0);
+    // 尸潮怪永远追玩家；普通敌对在夜晚/被激怒时追
+    const willChase = a.hordeMob || (hostile && dp<220 && (!d.night || isNight || a.aggro>0));
 
     if(a.aggro>0) a.aggro-=dt;
 
@@ -809,8 +973,9 @@ function updateAnimals(dt, isNight){
       if(dp < d.r+p.r+6 && a.atkCd<=0){
         a.atkCd=1.0;
         if(p.invuln<=0){
-          p.hp=clamp(p.hp-d.dmg,0,p.hpMax); p.invuln=0.4;
-          spawnFX(p.x,p.y-18,'-'+d.dmg,'dmg');
+          let dmg=d.dmg; if(hasTech('armor')) dmg=Math.round(dmg*0.65);   // 护甲减伤
+          p.hp=clamp(p.hp-dmg,0,p.hpMax); p.invuln=0.4;
+          spawnFX(p.x,p.y-18,'-'+dmg,'dmg');
           if(p.hp<=0){ die('你被'+d.nm+'袭击致命…'); return; }
         }
       }
@@ -974,6 +1139,18 @@ function render(){
     else if(it.kind==='animal') drawAnimal(o,sx,sy,false);
     else if(it.kind==='pet') drawAnimal(o,sx,sy,true);
     else if(it.kind==='player') drawPlayer(o,sx,sy);
+  }
+
+  // 子弹（曳光）
+  for(const b of G.bullets){
+    const sx=b.x-camX, sy=b.y-camY;
+    if(sx<-20||sy<-20||sx>VW+20||sy>VH+20) continue;
+    const len=Math.hypot(b.vx,b.vy)||1;
+    ctx.strokeStyle= b.owner==='turret'?'#8fe0ff':'#ffd257';
+    ctx.lineWidth=3; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(sx,sy);
+    ctx.lineTo(sx-b.vx/len*10, sy-b.vy/len*10); ctx.stroke();
+    ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(sx,sy,2,0,7); ctx.fill();
   }
 
   // 特效
@@ -1143,9 +1320,15 @@ function drawCtxRing(camX,camY){
     const rr=ANIMALS[a.t].r+p.r+20, dd=dist(p.x,p.y,a.x,a.y);
     if(dd<rr && dd<bad){bad=dd;at=a;} }
   const eq=G.equip?ITEMS[G.equip]:null;
+  // 枪械：始终射击模式，高亮最近敌人
+  if(eq&&eq.ranged){
+    if(at){ const sx=at.x-camX, sy=at.y-camY, r=ANIMALS[at.t].r+8;
+      ctx.strokeStyle='rgba(255,210,90,.85)'; ctx.lineWidth=2; ctx.setLineDash([4,4]);
+      ctx.beginPath(); ctx.arc(sx,sy-r*0.2,r,0,7); ctx.stroke(); ctx.setLineDash([]); }
+    setBtnLabel('射击'); return;
+  }
   if(eq&&eq.weapon&&at&&bad<=bnd+30){ target=at; kind='animal'; }
   else if(!target && at){ target=at; kind='animal'; }
-  const hint=document.getElementById('ctxHint');
   if(target){
     const sx=target.x-camX, sy=target.y-camY;
     const r = kind==='node'?NODES[target.t].r+8:ANIMALS[target.t].r+8;
@@ -1184,7 +1367,13 @@ function refreshHUD(){
   document.getElementById('daytag').textContent='第 '+G.day+' 天';
   const isNight = G.time<5*60 || G.time>19*60;
   const dusk = (G.time>=18*60&&G.time<=19*60)||(G.time>=5*60&&G.time<6*60);
-  document.getElementById('phase').textContent= isNight?'🌙 夜晚':dusk?'🌆 黄昏':'☀️ 白昼';
+  let ph = isNight?'🌙 夜晚':dusk?'🌆 黄昏':'☀️ 白昼';
+  if(G.horde && G.horde.active) ph='🩸 血月尸潮';
+  else if(isHordeDay(G.day) && !isNight) ph='⚠️ 今夜尸潮';
+  const phEl=document.getElementById('phase');
+  phEl.textContent=ph;
+  phEl.style.color = (G.horde&&G.horde.active)?'#ff7a6b' : (isHordeDay(G.day)&&!isNight?'#e6b04a':'');
+  document.getElementById('daytag').innerHTML='第 '+G.day+' 天　<span style="color:var(--amber2)">'+(G.tech?G.tech.points:0)+'🔬</span>';
   renderHotbar();
 }
 function setBar(id,frac){ document.getElementById(id).style.transform='scaleX('+clamp(frac,0,1)+')'; }
@@ -1217,7 +1406,7 @@ function selectHotbar(i){
 
 /* 面板控制 */
 let panelOpen=null;
-const panels={ inv:'pInv', craft:'pCraft', build:'pBuild', pets:'pPets', settings:'pSettings' };
+const panels={ inv:'pInv', craft:'pCraft', build:'pBuild', tech:'pTech', pets:'pPets', settings:'pSettings' };
 document.querySelectorAll('.mbtn').forEach(b=>{
   b.addEventListener('click',()=>openPanel(b.dataset.panel));
 });
@@ -1229,6 +1418,7 @@ function openPanel(name){
   if(name==='inv') renderInv();
   if(name==='craft') renderCraft();
   if(name==='build') renderBuild();
+  if(name==='tech') renderTech();
   if(name==='pets') renderPets();
   if(name==='settings') document.getElementById('saveBox').value='';
 }
@@ -1246,7 +1436,8 @@ function renderInv(){
     const c=document.createElement('div'); c.className='cell';
     c.innerHTML=`<div class="qty">${G.inv[k]}</div><div class="emo">${it.emo}</div><div class="nm">${it.nm}${it.eat?' 🍽️':''}</div>`;
     if(it.eat) c.addEventListener('click',()=>eatItem(k));
-    else if(it.tool||it.weapon){ c.addEventListener('click',()=>{ G.equip=(G.equip===k?null:k); renderHotbar(); toast(G.equip?'装备 '+it.nm:'收起'); }); }
+    else if(it.use) c.addEventListener('click',()=>useItem(k));
+    else if(it.tool||it.weapon||it.ranged){ c.addEventListener('click',()=>{ G.equip=(G.equip===k?null:k); renderHotbar(); toast(G.equip?'装备 '+it.nm:'收起'); }); }
     g.appendChild(c);
   }
 }
@@ -1257,18 +1448,29 @@ function renderCraft(){
   const nearFire = anyFireNearby();
   for(const r of RECIPES){
     const it=ITEMS[r.out];
-    const can = hasItems(r.cost) && (!r.fire || nearFire);
+    const locked = r.tech && !hasTech(r.tech);
+    const can = !locked && hasItems(r.cost) && (!r.fire || nearFire);
     const costStr=Object.entries(r.cost).map(([k,v])=>`${ITEMS[k].emo}${v}`).join(' ');
+    const wtag = it.ranged?('<span class="tag">远程'+it.ranged+'</span>') : (it.weapon?'<span class="tag">武器'+it.weapon+'</span>':'') ;
     const div=document.createElement('div'); div.className='recipe';
     div.innerHTML=`<div class="emo">${it.emo}</div>
-      <div class="info"><div class="rn">${it.nm}${r.fire?'<span class="tag">需🔥火堆</span>':''}${it.weapon?'<span class="tag">武器'+it.weapon+'</span>':''}${it.tool?'<span class="tag">工具</span>':''}</div>
+      <div class="info"><div class="rn">${it.nm}${r.fire?'<span class="tag">需🔥火堆</span>':''}${wtag}${it.tool?'<span class="tag">工具</span>':''}${locked?'<span class="tag" style="background:rgba(217,83,79,.18);color:#f0a">🔒'+TECH[r.tech].nm+'</span>':''}</div>
       <div class="rc">材料：${costStr}</div><div class="rd">${r.d}</div></div>`;
     const btn=document.createElement('button');
-    btn.className='cbtn'+(can?'':' dim'); btn.textContent= (r.fire&&!nearFire)?'需火堆': (hasItems(r.cost)?'合成':'缺材料');
-    btn.addEventListener('click',()=>{ craft(r); });
+    btn.className='cbtn'+(can?'':' dim');
+    btn.textContent= locked?'未解锁' : (r.fire&&!nearFire)?'需火堆' : (hasItems(r.cost)?'合成':'缺材料');
+    btn.addEventListener('click',()=>{ if(locked){ toast('需先在🔬科技解锁「'+TECH[r.tech].nm+'」'); return; } craft(r); });
     div.appendChild(btn);
     l.appendChild(div);
   }
+}
+function useItem(k){
+  const it=ITEMS[k]; if(!it||!it.use||(G.inv[k]||0)<=0) return;
+  if(it.heal){ G.player.hp=clamp(G.player.hp+it.heal,0,G.player.hpMax); }
+  G.inv[k]--; if(G.inv[k]<=0) delete G.inv[k];
+  spawnFX(G.player.x,G.player.y-20,it.emo,'get');
+  toast('使用了 '+it.nm);
+  refreshHUD(); renderInv();
 }
 function anyFireNearby(){
   const p=G.player;
@@ -1289,14 +1491,16 @@ function renderBuild(){
   const l=document.getElementById('buildList'); l.innerHTML='';
   for(const key in BUILDS){
     const b=BUILDS[key];
-    const can=hasItems(b.cost);
+    const locked = b.tech && !hasTech(b.tech);
+    const can=!locked && hasItems(b.cost);
     const costStr=Object.entries(b.cost).map(([k,v])=>`${ITEMS[k].emo}${v}`).join(' ');
     const div=document.createElement('div'); div.className='recipe';
     div.innerHTML=`<div class="emo">${b.emo}</div>
-      <div class="info"><div class="rn">${b.nm}</div><div class="rc">材料：${costStr}</div><div class="rd">${b.d}</div></div>`;
+      <div class="info"><div class="rn">${b.nm}${locked?'<span class="tag" style="background:rgba(217,83,79,.18);color:#f0a">🔒'+TECH[b.tech].nm+'</span>':''}</div><div class="rc">材料：${costStr}</div><div class="rd">${b.d}</div></div>`;
     const btn=document.createElement('button');
-    btn.className='cbtn'+(can?'':' dim'); btn.textContent=can?'选择放置':'缺材料';
+    btn.className='cbtn'+(can?'':' dim'); btn.textContent=locked?'未解锁':(hasItems(b.cost)?'选择放置':'缺材料');
     btn.addEventListener('click',()=>{
+      if(locked){ toast('需先在🔬科技解锁「'+TECH[b.tech].nm+'」'); return; }
       if(!hasItems(b.cost)){ toast('材料不足'); return; }
       G.selBuild=key; placeMode=true; closePanel();
       toast('走到空地，按「放置」安放 '+b.nm+'（再次点建造可取消）');
@@ -1310,6 +1514,38 @@ function renderBuild(){
     c.textContent='✕ 取消放置模式'; c.addEventListener('click',()=>{ placeMode=false; G.selBuild=null; setBtnLabel('搜刮'); renderBuild(); });
     l.appendChild(c);
   }
+}
+
+/* 科技树渲染 */
+function renderTech(){
+  document.getElementById('techPts').textContent = G.tech.points;
+  const l=document.getElementById('techList'); l.innerHTML='';
+  for(const id in TECH){
+    const t=TECH[id];
+    const done=hasTech(id);
+    const reqOk = t.req.every(r=>hasTech(r));
+    const affor = G.tech.points>=t.cost;
+    const reqNames = t.req.map(r=>TECH[r].nm).join('、');
+    const div=document.createElement('div'); div.className='recipe';
+    div.innerHTML=`<div class="emo">${t.emo}</div>
+      <div class="info"><div class="rn">${t.nm} ${done?'<span class="tag">已解锁</span>':'<span class="tag" style="background:rgba(230,176,74,.18);color:var(--amber2)">'+t.cost+'🔬</span>'}</div>
+      <div class="rd">${t.d}</div>${t.req.length?'<div class="rc">前置：'+reqNames+(reqOk?' ✓':' ✗')+'</div>':''}</div>`;
+    const btn=document.createElement('button');
+    if(done){ btn.className='cbtn dim'; btn.textContent='✓'; }
+    else { btn.className='cbtn'+((reqOk&&affor)?'':' dim'); btn.textContent=!reqOk?'缺前置':(affor?'解锁':'点数不足'); }
+    btn.addEventListener('click',()=>{ if(!done) unlockTech(id); });
+    div.appendChild(btn); l.appendChild(div);
+  }
+}
+function unlockTech(id){
+  const t=TECH[id];
+  if(hasTech(id)) return;
+  if(!t.req.every(r=>hasTech(r))){ toast('需先解锁前置科技'); return; }
+  if(G.tech.points<t.cost){ toast('研究点不足（需 '+t.cost+'🔬）'); return; }
+  G.tech.points-=t.cost; G.tech.unlocked.push(id);
+  toast('🔬 解锁科技：'+t.nm+'！');
+  spawnFX(G.player.x,G.player.y-20,t.emo,'get');
+  renderTech(); refreshHUD();
 }
 
 /* 同伴渲染 */
@@ -1353,9 +1589,12 @@ function loadGame(){
     const data=JSON.parse(s);
     if(!data||!data.player) return false;
     G=data;
-    // 补齐可能缺失字段
-    G.fx=G.fx||[]; G.drops=G.drops||[]; G.pets=G.pets||[]; G.structs=G.structs||[];
-    G.stats=G.stats||{harvested:0,killed:0,tamed:0,built:0,daysSurvived:0};
+    // 补齐可能缺失字段（兼容旧存档）
+    G.fx=G.fx||[]; G.drops=G.drops||[]; G.pets=G.pets||[]; G.structs=G.structs||[]; G.bullets=G.bullets||[];
+    G.tech=G.tech||{points:0,unlocked:[]}; if(!G.tech.unlocked) G.tech.unlocked=[];
+    G.horde=G.horde||{active:false,doneDay:0,warned:0};
+    if(!G.hotbar||G.hotbar.length<6) G.hotbar=['axe','pick','spear','torch','pistol','rifle'];
+    G.stats=G.stats||{harvested:0,killed:0,tamed:0,built:0,daysSurvived:0,bossKilled:0};
     return true;
   }catch(e){ return false; }
 }
