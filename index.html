@@ -504,11 +504,11 @@ function doAction(){
     const dd=dist(p.x,p.y,n.x,n.y);
     if(dd<rr && dd<bnd){ bnd=dd; bestNode=n; }
   }
-  // 找最近敌对/可攻击动物
+  // 找最近敌对/可攻击动物（放宽近战交战距离，配合攻击前冲）
   let bestAnimal=null,bad=1e9;
   for(const a of G.animals){
     if(a.tamed) continue;
-    const rr = ANIMALS[a.t].r + p.r + 20;
+    const rr = ANIMALS[a.t].r + p.r + 46;
     const dd=dist(p.x,p.y,a.x,a.y);
     if(dd<rr && dd<bad){ bad=dd; bestAnimal=a; }
   }
@@ -582,10 +582,13 @@ function attack(a){
   if(p.atkCd>0) return;
   if(p.stam<6){ toast('耐力不足'); return; }
   p.stam-=6; p.atkCd=0.35;
+  const d=ANIMALS[a.t];
+  // 攻击前冲：与目标有间隙时向其迈一步，让近战更跟手
+  const gap=dist(p.x,p.y,a.x,a.y), touch=d.r+p.r;
+  if(gap>touch+2){ const la=Math.atan2(a.y-p.y,a.x-p.x); const step=Math.min(gap-touch,20); tryMove(p, Math.cos(la)*step, Math.sin(la)*step); }
   const eq=G.equip?ITEMS[G.equip]:null;
   const dmg = eq&&eq.weapon ? eq.weapon : 4;   // 徒手4
   a.hp-=dmg; a.hurt=0.3; a.aggro=8;
-  const d=ANIMALS[a.t];
   if(!d.passive) a.aggro=10;
   // 击退
   const ang=Math.atan2(a.y-p.y, a.x-p.x);
@@ -843,15 +846,15 @@ function updateHorde(dt, isNight){
     h.active=true; h.acc=0; h.doneDay=G.day;
     toast('🩸 血月降临！丧尸尸潮来袭！');
     spawnBrute();
-    for(let i=0;i<6;i++) spawnHordeZombie();
+    for(let i=0;i<10;i++) spawnHordeZombie();
   }
   if(h.active){
     h.acc=(h.acc||0)+dt;
-    if(h.acc>2.2){ h.acc=0;
+    if(h.acc>1.4){ h.acc=0;
       const mobs=G.animals.filter(a=>a.hordeMob&&!a.tamed).length;
-      if(mobs<30){ const k=1+(Math.random()<0.55?1:0); for(let i=0;i<k;i++) spawnHordeZombie(); }
-      // 午夜前后再刷暴君
-      if(!G.animals.some(a=>ANIMALS[a.t].boss) && Math.random()<0.22) spawnBrute();
+      if(mobs<42){ const k=2+(Math.random()<0.5?1:0); for(let i=0;i<k;i++) spawnHordeZombie(); }
+      // 午夜前后再刷暴君（可同时存在两只）
+      if(G.animals.filter(a=>ANIMALS[a.t].boss).length<2 && Math.random()<0.3) spawnBrute();
     }
     // 天亮才退潮：白昼且非傍晚起始窗口(<18:00)，避免刚在黄昏开场就误判
     if(!isNight && G.time<18*60){
@@ -864,12 +867,12 @@ function updateHorde(dt, isNight){
 function spawnHordeZombie(){
   const p=G.player;
   let x,y,tries=0;
-  do{ const ang=rnd(0,Math.PI*2), rad=rnd(340,520);
+  do{ const ang=rnd(0,Math.PI*2), rad=rnd(280,440);
       x=clamp(p.x+Math.cos(ang)*rad,60,WORLD_W-60);
       y=clamp(p.y+Math.sin(ang)*rad,60,WORLD_H-60); tries++;
   }while(isWaterPx(x,y)&&tries<12);
   if(isWaterPx(x,y)) return;
-  const t = Math.random()<0.22?'bear':'wolf';
+  const t = Math.random()<0.25?'bear':'wolf';
   G.animals.push(mkAnimal(t,x,y,true));
 }
 function spawnBrute(){
@@ -913,11 +916,11 @@ function updateTurrets(dt){
     s.cd=(s.cd||0)-dt;
     if(s.cd>0) continue;
     let tgt=null,td=1e9;
-    for(const a of G.animals){ if(a.tamed) continue; const dd=dist(s.x,s.y,a.x,a.y); if(dd<230 && dd<td){td=dd;tgt=a;} }
+    for(const a of G.animals){ if(a.tamed) continue; const dd=dist(s.x,s.y,a.x,a.y); if(dd<260 && dd<td){td=dd;tgt=a;} }
     if(tgt){
-      s.cd=0.5;
+      s.cd=0.38;
       const ang=Math.atan2(tgt.y-s.y,tgt.x-s.x);
-      spawnBullet(s.x+Math.cos(ang)*14, s.y+Math.sin(ang)*14, Math.cos(ang)*560, Math.sin(ang)*560, 16, 'turret');
+      spawnBullet(s.x+Math.cos(ang)*14, s.y+Math.sin(ang)*14, Math.cos(ang)*600, Math.sin(ang)*600, 18, 'turret');
     }
   }
 }
@@ -958,7 +961,8 @@ function updateAnimals(dt, isNight){
     let tx=0,ty=0, spd=d.spd*40;
     const hostile = !d.passive;
     // 尸潮怪永远追玩家；普通敌对在夜晚/被激怒时追
-    const willChase = a.hordeMob || (hostile && dp<220 && (!d.night || isNight || a.aggro>0));
+    // 尸潮怪永远追；普通敌对：夜间/被激怒时远距追，白天贴近(95px内)也会应战
+    const willChase = a.hordeMob || (hostile && (a.aggro>0 || dp<95 || (dp<220 && (!d.night || isNight))));
 
     if(a.aggro>0) a.aggro-=dt;
 
@@ -1317,7 +1321,7 @@ function drawCtxRing(camX,camY){
     if(dd<rr && dd<bnd){bnd=dd;target=n;kind='node';} }
   let bad=1e9,at=null;
   for(const a of G.animals){ if(a.tamed) continue;
-    const rr=ANIMALS[a.t].r+p.r+20, dd=dist(p.x,p.y,a.x,a.y);
+    const rr=ANIMALS[a.t].r+p.r+46, dd=dist(p.x,p.y,a.x,a.y);
     if(dd<rr && dd<bad){bad=dd;at=a;} }
   const eq=G.equip?ITEMS[G.equip]:null;
   // 枪械：始终射击模式，高亮最近敌人
@@ -1390,7 +1394,10 @@ function renderHotbar(){
     const s=document.createElement('div');
     s.className='slot'+(G.equip===id?' active':'');
     s.style.opacity=owned?1:0.35;
-    s.innerHTML = (ITEMS[id]?ITEMS[id].emo:'·');
+    const it=ITEMS[id];
+    // 枪械显示弹药数，其余显示按键编号
+    const badge = (it&&it.ranged)?('🧨'+(G.inv.ammo||0)):(i+1);
+    s.innerHTML = (it?it.emo:'·') + '<small>'+badge+'</small>';
     s.addEventListener('click',()=>{ if(owned) selectHotbar(i); });
     bindTap(s,()=>{ if(owned) selectHotbar(i); });
     hotbarEl.appendChild(s);
