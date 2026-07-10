@@ -1,6 +1,9 @@
-# 末日方舟 · 废土求生 🧟
+# 末日方舟 · 废土求生 🧟 / Wasteland Ark
 
 一款浏览器上的 **2D 俯视角末世生存游戏**，玩法灵感取自《方舟：生存进化》。大灾变后，你在废土中醒来——**搜刮、制作、筑墙、结伴**，熬过每一个丧尸横行的夜晚，成为废土的幸存者。
+
+> 🌐 **支持中英文切换**：开场页或设置面板点「🌐 English / 中文」即可一键切换，选择记忆在本地。
+> *Bilingual (中文 / English): toggle anytime from the intro screen or Settings; your choice is remembered.*
 
 > 搜刮废料 → 打造枪械 → 研究科技 → 建造据点 → 死守血月尸潮
 
