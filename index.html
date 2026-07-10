@@ -185,6 +185,7 @@
     <div class="mbtn" data-panel="craft">🛠️</div>
     <div class="mbtn" data-panel="build">🏗️</div>
     <div class="mbtn" data-panel="tech">🔬</div>
+    <div class="mbtn" data-panel="base">🏆</div>
     <div class="mbtn" data-panel="pets">🐾</div>
     <div class="mbtn" data-panel="settings">⚙️</div>
   </div>
@@ -230,10 +231,20 @@
     <div id="techList"></div>
   </div>
 
+  <!-- 面板：据点 / 成就 -->
+  <div class="panel" id="pBase">
+    <div class="phead"><h2>🏆 据点 · 成就</h2><div class="xbtn" data-close>✕</div></div>
+    <div class="sub">建造并升级📡避难信标强化据点；完成成就获得研究点，规划你的长线目标。</div>
+    <div id="beaconBox"></div>
+    <div style="font-size:13px;color:var(--grn2);margin:14px 0 8px;font-weight:600">🏅 成就 <span id="achCount" style="color:var(--muted);font-weight:400"></span></div>
+    <div id="achList"></div>
+  </div>
+
   <!-- 面板：驯兽 -->
   <div class="panel" id="pPets">
     <div class="phead"><h2>🐾 同伴</h2><div class="xbtn" data-close>✕</div></div>
-    <div class="sub">用🥫罐头喂食温顺动物即可驯服。同伴会跟随你并攻击丧尸。</div>
+    <div class="sub">用🥫罐头喂食温顺动物即可驯服。用下方指令切换同伴行为。</div>
+    <div id="petCmd" style="display:flex;gap:6px;margin-bottom:10px"></div>
     <div id="petList"></div>
   </div>
 
@@ -252,7 +263,9 @@
       · 饥饿🍖与口渴💧会随时间下降，归零后持续掉血。靠近水边点💧喝水。<br>
       · 🔬科技研究：击杀/存活/挺过尸潮获得研究点，解锁枪械、护甲、哨戒炮等。<br>
       · 🩸血月尸潮：第3天起每3天一场，丧尸成群围攻并出现👹暴君，建墙🧱、放哨戒炮🔫、点火堆🔥死守。<br>
-      · 喂🥫罐头驯服🐕🐀等温顺动物成为战斗同伴。<br>
+      · 🏆据点面板：建造📡避难信标并升级，强化生命/减耗/研究/伤害；完成成就领研究点。<br>
+      · 📦稀有空投：地图远处的发光箱子（屏幕边缘有金色箭头指引），拾取获得大量物资与研究点。<br>
+      · 🐾同伴指令：跟随 / 驻守(守家) / 进攻 / 待命；同伴有血量，会受伤阵亡，可喂🥩生肉治疗。<br>
       · 进度自动保存在本地浏览器。
     </div>
   </div>
@@ -344,6 +357,7 @@ const BUILDS = {
   bed:     {emo:'🛏️', nm:'睡袋',   cost:{wood:8,fiber:6,hide:2}, solid:false, bed:true, d:'设为重生点'},
   storage: {emo:'📦', nm:'储物箱', cost:{wood:6},         solid:true, hp:80, d:'装饰（背包无上限）'},
   turret:  {emo:'🔫', nm:'哨戒炮', cost:{metal:12,wood:4}, solid:false, hp:100, turret:true, tech:'turret', d:'自动射击附近丧尸'},
+  beacon:  {emo:'📡', nm:'避难信标', cost:{metal:8,wood:10,stone:6}, solid:false, beacon:true, light:70, d:'据点核心，可升级强化全局(生命/减耗/研究/伤害)'},
 };
 
 // 资源节点类型（废土搜刮点）
@@ -378,6 +392,33 @@ const TECH = {
   turret:   {nm:'自动防御', emo:'🛡️', cost:40, req:['firearms'], d:'解锁「哨戒炮」建造'},
 };
 
+// 避难信标升级：等级越高，全局加成越强（长线资源投入目标）
+const BEACON_MAX = 5;
+function beaconCost(lv){ return { metal:6+lv*4, wood:6+lv*3, stone:4+lv*3, hide: lv>=2?(lv-1)*3:0 }; } // 升到 lv+1 的花费
+function beaconLv(){ return G.beacon? G.beacon.level : 0; }
+function beaconHpBonus(){ return Math.max(0,beaconLv()-1)*20; }
+function beaconDrainMul(){ return Math.max(0.6, 1-0.08*Math.max(0,beaconLv()-1)); }
+function beaconTechMul(){ return 1+0.12*Math.max(0,beaconLv()-1); }
+function beaconDmgMul(){ return 1+0.12*Math.max(0,beaconLv()-1); }
+
+// 成就（长线目标清单，达成奖励研究点🔬）
+const ACHIEVEMENTS = [
+  {id:'firstGather', emo:'⛏️', nm:'白手起家', d:'完成首次搜刮',        rw:2,  chk:g=>g.stats.harvested>=1},
+  {id:'craft5',     emo:'🛠️', nm:'能工巧匠', d:'合成 5 件物品',        rw:5,  chk:g=>g.stats.crafted>=5},
+  {id:'hunter',     emo:'🗡️', nm:'猎手',     d:'击杀 10 个敌人',       rw:5,  chk:g=>g.stats.killed>=10},
+  {id:'butcher',    emo:'💀', nm:'屠戮者',   d:'击杀 100 个敌人',      rw:20, chk:g=>g.stats.killed>=100},
+  {id:'gunner',     emo:'🔫', nm:'神枪手',   d:'用枪械击杀 20 个敌人', rw:12, chk:g=>g.stats.gunKills>=20},
+  {id:'tamer',      emo:'🐾', nm:'驯兽师',   d:'驯服 3 个同伴',        rw:10, chk:g=>g.stats.tamed>=3},
+  {id:'builder',    emo:'🏗️', nm:'建筑师',   d:'建造 20 个建筑',       rw:10, chk:g=>g.stats.built>=20},
+  {id:'slayer',     emo:'👹', nm:'屠龙者',   d:'击杀 1 只丧尸暴君',    rw:20, chk:g=>g.stats.bossKilled>=1},
+  {id:'survivor1',  emo:'🩸', nm:'血月幸存', d:'挺过 1 场血月尸潮',    rw:15, chk:g=>g.stats.hordesSurvived>=1},
+  {id:'veteran',    emo:'🎖️', nm:'血月老兵', d:'挺过 5 场血月尸潮',    rw:40, chk:g=>g.stats.hordesSurvived>=5},
+  {id:'longlive',   emo:'📅', nm:'不朽',     d:'存活 10 天',           rw:25, chk:g=>g.stats.daysSurvived>=10},
+  {id:'scientist',  emo:'🔬', nm:'科技狂人', d:'解锁全部科技',         rw:30, chk:g=>Object.keys(TECH).every(t=>g.tech.unlocked.indexOf(t)>=0)},
+  {id:'lord',       emo:'📡', nm:'据点领主', d:'避难信标升到 3 级',    rw:25, chk:g=>beaconLv()>=3},
+  {id:'explorer',   emo:'📦', nm:'拾荒专家', d:'拾取 3 个稀有空投',    rw:20, chk:g=>g.stats.crates>=3},
+];
+
 /* ---------- 工具函数 ---------- */
 const rnd = (a,b)=> a + Math.random()*(b-a);
 const rint = (a,b)=> Math.floor(rnd(a,b+1));
@@ -403,9 +444,20 @@ function newGame(){
     spawnAcc:0, animalAcc:0,
     tech:{ points:0, unlocked:[] }, // 科技树
     horde:{ active:false, doneDay:0, warned:0 }, // 尸潮夜状态
-    stats:{ harvested:0, killed:0, tamed:0, built:0, daysSurvived:0, bossKilled:0 },
+    beacon:null,                 // 避难信标 {level}
+    petMode:'follow',            // 同伴指令：follow/guard/attack
+    crates:[],                   // 稀有空投箱
+    ach:{ done:[] },             // 已达成成就
+    crateAcc:0,
+    stats:{ harvested:0, crafted:0, killed:0, gunKills:0, tamed:0, built:0, daysSurvived:0, bossKilled:0, hordesSurvived:0, crates:0 },
   };
   genWorld();
+  // 空投在 buildTerrain 之后由 ensureCrates() 生成（此时地形/水域已就绪）
+}
+function ensureCrates(){
+  if(!G.crates) G.crates=[];
+  let guard=0;
+  while(G.crates.length<5 && guard++<30) spawnCrate();
 }
 
 function genWorld(){
@@ -612,7 +664,51 @@ function killAnimal(a){
   addTechPoints(pts);
   if(d.boss){ G.stats.bossKilled++; spawnFX(a.x,a.y-30,'击杀 '+d.nm,'get'); toast('💀 击杀「'+d.nm+'」！+'+pts+'🔬'); }
 }
-function addTechPoints(n){ G.tech.points += n; }
+function addTechPoints(n){ G.tech.points += Math.round(n*beaconTechMul()); }
+
+/* ---------- 避难信标升级 ---------- */
+function applyBeacon(){
+  const p=G.player; const nm=100+beaconHpBonus();
+  p.hpMax=nm; p.hp=clamp(p.hp+20,0,nm);   // 升级顺带回一点血
+}
+function upgradeBeacon(){
+  if(!G.beacon){ toast('需先建造📡避难信标'); return; }
+  if(G.beacon.level>=BEACON_MAX){ toast('信标已满级'); return; }
+  const cost=beaconCost(G.beacon.level);
+  if(!hasItems(cost)){ toast('材料不足'); return; }
+  payItems(cost); G.beacon.level++; applyBeacon();
+  toast('📡 信标升级至 Lv.'+G.beacon.level+'！全局强化提升');
+  spawnFX(G.player.x,G.player.y-24,'📡Lv'+G.beacon.level,'get');
+  renderBase(); refreshHUD();
+}
+
+/* ---------- 稀有空投（探索目标） ---------- */
+function spawnCrate(){
+  const cx=WORLD_W/2, cy=WORLD_H/2;
+  let x,y,tries=0;
+  do{ x=rnd(120,WORLD_W-120); y=rnd(120,WORLD_H-120); tries++; }
+  while((isWaterPx(x,y)||dist(x,y,cx,cy)<600)&&tries<30);
+  if(isWaterPx(x,y)) return;
+  G.crates.push({x,y});
+}
+function updateCrates(dt){
+  const p=G.player;
+  for(let i=G.crates.length-1;i>=0;i--){
+    const c=G.crates[i];
+    if(dist(p.x,p.y,c.x,c.y) < p.r+24){
+      // 开箱：丰厚战利品
+      const loot={ metal:rint(3,7), ammo:rint(6,14), medkit:rint(1,2) };
+      if(Math.random()<0.5) loot.cooked=rint(1,3);
+      for(const k in loot) if(loot[k]>0) addItem(k,loot[k]);
+      const bonus=rint(8,16); addTechPoints(bonus);
+      G.crates.splice(i,1); G.stats.crates++;
+      spawnFX(c.x,c.y-10,'📦 空投！+'+bonus+'🔬','get');
+      toast('📦 拾取稀有空投：废铁×'+loot.metal+' 弹药×'+loot.ammo+' 医疗×'+(loot.medkit||0)+' +'+bonus+'🔬');
+      // 稍后在别处补一个，保持探索目标
+      setTimeout(()=>{ if(G) spawnCrate(); }, 100);
+    }
+  }
+}
 
 function facePoint(x,y){
   const p=G.player;
@@ -701,6 +797,7 @@ function buildTerrain(){
 }
 function isWaterTile(tx,ty){
   if(tx<0||ty<0||tx>=MAP_W||ty>=MAP_H) return true;
+  if(!waterTiles) return false;
   return waterTiles[ty*MAP_W+tx]===1;
 }
 function isWaterPx(x,y){ return isWaterTile(Math.floor(x/TILE),Math.floor(y/TILE)); }
@@ -725,6 +822,7 @@ function placeStruct(){
   if(isWaterPx(gx,gy)){ toast('不能建在水里'); return; }
   // 太近其他实体？
   for(const s of G.structs){ if(dist(gx,gy,s.x,s.y)<30){ toast('这里已有建筑'); return; } }
+  if(b.beacon && G.beacon){ toast('据点已有信标，请在🏆据点面板升级'); placeMode=false; setBtnLabel(); return; }
   if(!hasItems(b.cost)){ toast('材料不足'); placeMode=false; setBtnLabel(); return; }
   payItems(b.cost);
   G.structs.push({t:G.selBuild, x:gx, y:gy, hp:b.hp||9999, hpMax:b.hp||9999, open:false});
@@ -732,6 +830,7 @@ function placeStruct(){
   spawnFX(gx,gy,b.emo,'get');
   toast('建造了 '+b.nm);
   if(b.bed){ G.respawn={x:gx,y:gy}; }
+  if(b.beacon){ G.beacon={level:1, x:gx, y:gy}; applyBeacon(); toast('📡 避难信标已建立！去🏆据点面板升级强化'); }
   // 是否继续放置
   if(!hasItems(b.cost)){ placeMode=false; G.selBuild=null; }
   setBtnLabel();
@@ -788,9 +887,10 @@ function update(dt){
   if(p.atkCd>0) p.atkCd-=dt;
   if(p.invuln>0) p.invuln-=dt;
 
-  /* --- 饥饿口渴 --- */
-  G.player.food = clamp(p.food - dt*0.9, 0, 100);
-  G.player.water= clamp(p.water- dt*1.15,0, 100);
+  /* --- 饥饿口渴（信标可降低消耗） --- */
+  const drainM=beaconDrainMul();
+  G.player.food = clamp(p.food - dt*0.9*drainM, 0, 100);
+  G.player.water= clamp(p.water- dt*1.15*drainM,0, 100);
   // 归零掉血 / 满时缓慢回血
   let starve=0;
   if(p.food<=0) starve+=dt*2.2;
@@ -831,10 +931,30 @@ function update(dt){
   /* --- 哨戒炮 --- */
   updateTurrets(dt);
 
+  /* --- 稀有空投拾取 --- */
+  updateCrates(dt);
+
+  /* --- 成就检测（每 0.5s 一次） --- */
+  G.achAcc=(G.achAcc||0)+dt;
+  if(G.achAcc>0.5){ G.achAcc=0; checkAchievements(); }
+
   /* --- 特效 --- */
   for(let i=G.fx.length-1;i>=0;i--){ const f=G.fx[i]; f.life+=dt; f.y+=f.vy*dt*60; f.vy*=0.94; if(f.life>f.max) G.fx.splice(i,1); }
 
   refreshHUD();
+}
+
+/* ---------- 成就 ---------- */
+function checkAchievements(){
+  for(const a of ACHIEVEMENTS){
+    if(G.ach.done.indexOf(a.id)>=0) continue;
+    if(a.chk(G)){
+      G.ach.done.push(a.id);
+      G.tech.points += a.rw;   // 成就直接给点（不叠信标倍率，避免刷）
+      toast('🏆 成就达成：'+a.nm+'　+'+a.rw+'🔬');
+      spawnFX(G.player.x,G.player.y-24,'🏆'+a.nm,'get');
+    }
+  }
 }
 
 /* ---------- 尸潮夜 ---------- */
@@ -858,7 +978,7 @@ function updateHorde(dt, isNight){
     }
     // 天亮才退潮：白昼且非傍晚起始窗口(<18:00)，避免刚在黄昏开场就误判
     if(!isNight && G.time<18*60){
-      h.active=false;
+      h.active=false; G.stats.hordesSurvived++;
       addTechPoints(25);
       toast('☀️ 尸潮退去，你挺过了血月！+25🔬');
     }
@@ -901,7 +1021,7 @@ function updateBullets(dt){
       if(dist(b.x,b.y,a.x,a.y) < ANIMALS[a.t].r+4){
         a.hp-=b.dmg; a.hurt=0.3; a.aggro=10;
         spawnFX(a.x,a.y-14,'-'+b.dmg,'dmg');
-        if(a.hp<=0) killAnimal(a);
+        if(a.hp<=0){ const wasPlayer=(b.owner==='player'); killAnimal(a); if(wasPlayer) G.stats.gunKills++; }
         hit=true; break;
       }
     }
@@ -920,7 +1040,7 @@ function updateTurrets(dt){
     if(tgt){
       s.cd=0.38;
       const ang=Math.atan2(tgt.y-s.y,tgt.x-s.x);
-      spawnBullet(s.x+Math.cos(ang)*14, s.y+Math.sin(ang)*14, Math.cos(ang)*600, Math.sin(ang)*600, 18, 'turret');
+      spawnBullet(s.x+Math.cos(ang)*14, s.y+Math.sin(ang)*14, Math.cos(ang)*600, Math.sin(ang)*600, Math.round(18*beaconDmgMul()), 'turret');
     }
   }
 }
@@ -998,34 +1118,62 @@ function updateAnimals(dt, isNight){
 
 function updatePets(dt){
   const p=G.player;
-  for(const pet of G.pets){
+  const mode=G.petMode||'follow';
+  for(let pi=G.pets.length-1;pi>=0;pi--){
+    const pet=G.pets[pi];
     const d=ANIMALS[pet.t];
     if(pet.atkCd>0) pet.atkCd-=dt;
-    // 找附近敌人
+    if(pet.hurt>0) pet.hurt-=dt;
+    if(pet.hpMax==null) pet.hpMax=d.hp;
+    // 待命模式：不战斗、仅跟随、快速回血
+    if(mode==='passive'){
+      pet.hp=Math.min(pet.hpMax, pet.hp+dt*4);
+      const dp=dist(pet.x,pet.y,p.x,p.y);
+      if(dp>55){ const ang=Math.atan2(p.y-pet.y,p.x-pet.x); tryMove(pet, Math.cos(ang)*d.spd*50*dt, Math.sin(ang)*d.spd*50*dt); }
+      continue;
+    }
+    // 搜敌范围：进攻>驻守>跟随
+    const seek = mode==='attack'?420 : mode==='guard'?200 : 170;
+    const anchor = mode==='guard' ? (pet.post||{x:pet.x,y:pet.y}) : p;   // 驻守锚定岗位
     let target=null,td=1e9;
     for(const a of G.animals){
       if(a.tamed) continue;
       const ad=dist(pet.x,pet.y,a.x,a.y);
-      if(ad<160 && ad<td){ td=ad; target=a; }
+      // 驻守：只打靠近岗位的敌人
+      if(mode==='guard' && dist(anchor.x,anchor.y,a.x,a.y)>seek) continue;
+      if(ad<seek && ad<td){ td=ad; target=a; }
     }
-    let tx,ty,spd=d.spd*50;
+    let tx=0,ty=0, spd=d.spd*52;
     if(target){
       const ang=Math.atan2(target.y-pet.y,target.x-pet.x);
       tx=Math.cos(ang);ty=Math.sin(ang);
-      if(td < d.r+ANIMALS[target.t].r+6 && pet.atkCd<=0){
+      if(td < d.r+ANIMALS[target.t].r+8 && pet.atkCd<=0){
         pet.atkCd=0.7;
-        const dmg=d.petDmg||6;
+        const dmg=Math.round((d.petDmg||6)*beaconDmgMul());
         target.hp-=dmg; target.hurt=0.3; target.aggro=6;
         spawnFX(target.x,target.y-14,'-'+dmg,'dmg');
         if(target.hp<=0) killAnimal(target);
+        // 反伤：敌人贴身会咬伤同伴
+        if(!ANIMALS[target.t].passive){ pet.hp-=Math.round((ANIMALS[target.t].dmg||6)*0.5); pet.hurt=0.3; }
       }
+    } else if(mode==='guard'){
+      // 无敌人时回到岗位
+      const dp=dist(pet.x,pet.y,anchor.x,anchor.y);
+      if(dp>26){ const ang=Math.atan2(anchor.y-pet.y,anchor.x-pet.x); tx=Math.cos(ang);ty=Math.sin(ang); }
     } else {
       // 跟随玩家
       const dp=dist(pet.x,pet.y,p.x,p.y);
       if(dp>60){ const ang=Math.atan2(p.y-pet.y,p.x-pet.x); tx=Math.cos(ang);ty=Math.sin(ang); }
-      else { tx=0;ty=0; }
     }
     if(tx||ty){ const m=Math.hypot(tx,ty)||1; tryMove(pet, tx/m*spd*dt, ty/m*spd*dt); }
+    // 无敌人时缓慢回血
+    if(!target && pet.hp<pet.hpMax) pet.hp=Math.min(pet.hpMax, pet.hp+dt*1.5);
+    // 同伴阵亡
+    if(pet.hp<=0){
+      spawnFX(pet.x,pet.y,'💔','get');
+      toast('同伴「'+d.nm+'」倒下了…');
+      G.pets.splice(pi,1);
+    }
   }
 }
 
@@ -1118,6 +1266,18 @@ function render(){
 
   drawGround(camX,camY);
 
+  // 稀有空投（发光地标）
+  const pulse=0.5+0.5*Math.sin(G.time*0.5);
+  for(const c of G.crates){
+    const sx=c.x-camX, sy=c.y-camY;
+    if(sx<-40||sy<-40||sx>VW+40||sy>VH+40) continue;
+    ctx.save(); ctx.globalCompositeOperation='lighter';
+    const g=ctx.createRadialGradient(sx,sy,0,sx,sy,34+pulse*10);
+    g.addColorStop(0,'rgba(240,200,90,'+(0.35+pulse*0.25)+')'); g.addColorStop(1,'rgba(240,200,90,0)');
+    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(sx,sy,34+pulse*10,0,7); ctx.fill(); ctx.restore();
+    ctx.font='26px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('📦', sx, sy);
+  }
+
   // 掉落
   for(const d of G.drops){
     const sx=d.x-camX, sy=d.y-camY+ (d.oy||0);
@@ -1187,6 +1347,27 @@ function render(){
 
   // 搜刮提示环
   drawCtxRing(camX,camY);
+
+  // 屏幕边缘：指向最近稀有空投的方向箭头（探索指引）
+  drawCratePointer(camX,camY);
+}
+
+function drawCratePointer(camX,camY){
+  if(!G.crates||!G.crates.length) return;
+  const p=G.player; let c=null,bd=1e9;
+  for(const k of G.crates){ const d=dist(p.x,p.y,k.x,k.y); if(d<bd){bd=d;c=k;} }
+  if(!c) return;
+  const sx=c.x-camX, sy=c.y-camY;
+  if(sx>10&&sy>90&&sx<VW-10&&sy<VH-160) return;   // 已在屏幕内则不画箭头
+  const ang=Math.atan2(c.y-p.y, c.x-p.x);
+  const mx=VW/2, my=VH/2, rx=VW/2-26, ry=VH/2-150;
+  const ex=mx+Math.cos(ang)*rx, ey=my+Math.sin(ang)*ry;
+  ctx.save(); ctx.translate(ex,ey); ctx.rotate(ang);
+  ctx.fillStyle='rgba(240,200,90,.92)';
+  ctx.beginPath(); ctx.moveTo(12,0); ctx.lineTo(-8,-8); ctx.lineTo(-8,8); ctx.closePath(); ctx.fill();
+  ctx.restore();
+  ctx.fillStyle='rgba(240,200,90,.95)'; ctx.font='11px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('📦'+Math.round(bd/48)+'格', ex, ey-16);
 }
 
 function drawGround(camX,camY){
@@ -1413,7 +1594,7 @@ function selectHotbar(i){
 
 /* 面板控制 */
 let panelOpen=null;
-const panels={ inv:'pInv', craft:'pCraft', build:'pBuild', tech:'pTech', pets:'pPets', settings:'pSettings' };
+const panels={ inv:'pInv', craft:'pCraft', build:'pBuild', tech:'pTech', base:'pBase', pets:'pPets', settings:'pSettings' };
 document.querySelectorAll('.mbtn').forEach(b=>{
   b.addEventListener('click',()=>openPanel(b.dataset.panel));
 });
@@ -1426,6 +1607,7 @@ function openPanel(name){
   if(name==='craft') renderCraft();
   if(name==='build') renderBuild();
   if(name==='tech') renderTech();
+  if(name==='base') renderBase();
   if(name==='pets') renderPets();
   if(name==='settings') document.getElementById('saveBox').value='';
 }
@@ -1488,6 +1670,7 @@ function craft(r){
   if(r.fire && !nearFire){ toast('需要靠近🔥火堆烹饪'); return; }
   if(!hasItems(r.cost)){ toast('材料不足'); return; }
   payItems(r.cost); addItem(r.out, r.n);
+  G.stats.crafted++;
   toast('合成了 '+ITEMS[r.out].nm+' ×'+r.n);
   spawnFX(G.player.x,G.player.y-20,ITEMS[r.out].emo,'get');
   renderCraft(); refreshHUD();
@@ -1555,8 +1738,58 @@ function unlockTech(id){
   renderTech(); refreshHUD();
 }
 
+/* 据点 / 成就渲染 */
+function renderBase(){
+  // 信标
+  const bb=document.getElementById('beaconBox'); bb.innerHTML='';
+  const lv=beaconLv();
+  const div=document.createElement('div'); div.className='recipe';
+  if(lv===0){
+    div.innerHTML=`<div class="emo">📡</div><div class="info"><div class="rn">避难信标 · 未建立</div>
+      <div class="rd">在🏗️建造面板中建造「避难信标」，之后可在此升级强化全局。</div></div>`;
+  } else {
+    const maxed=lv>=BEACON_MAX;
+    const nc=maxed?null:beaconCost(lv);
+    const costStr=nc?Object.entries(nc).filter(([k,v])=>v>0).map(([k,v])=>`${ITEMS[k].emo}${v}`).join(' '):'—';
+    div.innerHTML=`<div class="emo">📡</div><div class="info">
+      <div class="rn">避难信标 <span class="tag">Lv.${lv}${maxed?' 满级':''}</span></div>
+      <div class="rc">加成：生命+${beaconHpBonus()} · 饥渴消耗×${beaconDrainMul().toFixed(2)} · 研究+${Math.round((beaconTechMul()-1)*100)}% · 伤害+${Math.round((beaconDmgMul()-1)*100)}%</div>
+      ${maxed?'':'<div class="rd">升级花费：'+costStr+'</div>'}</div>`;
+    if(!maxed){
+      const btn=document.createElement('button'); const can=hasItems(nc);
+      btn.className='cbtn'+(can?'':' dim'); btn.textContent=can?'升级':'缺材料';
+      btn.addEventListener('click',()=>upgradeBeacon());
+      div.appendChild(btn);
+    }
+  }
+  bb.appendChild(div);
+  // 成就
+  const done=G.ach.done.length, total=ACHIEVEMENTS.length;
+  document.getElementById('achCount').textContent=`(${done}/${total})`;
+  const al=document.getElementById('achList'); al.innerHTML='';
+  for(const a of ACHIEVEMENTS){
+    const ok=G.ach.done.indexOf(a.id)>=0;
+    const r=document.createElement('div'); r.className='recipe'; r.style.opacity=ok?1:0.72;
+    r.innerHTML=`<div class="emo">${a.emo}</div><div class="info">
+      <div class="rn">${a.nm} ${ok?'<span class="tag">✓ 已达成</span>':'<span class="tag" style="background:rgba(230,176,74,.15);color:var(--amber2)">+'+a.rw+'🔬</span>'}</div>
+      <div class="rd">${a.d}</div></div>`;
+    al.appendChild(r);
+  }
+}
+
 /* 同伴渲染 */
+const PET_MODES=[{k:'follow',nm:'跟随',emo:'🚶'},{k:'guard',nm:'驻守',emo:'🛡️'},{k:'attack',nm:'进攻',emo:'⚔️'},{k:'passive',nm:'待命',emo:'💤'}];
 function renderPets(){
+  // 指令模式
+  const cmd=document.getElementById('petCmd'); cmd.innerHTML='';
+  for(const m of PET_MODES){
+    const btn=document.createElement('button');
+    const on=(G.petMode||'follow')===m.k;
+    btn.className='cbtn'+(on?'':' dim'); btn.style.flex='1'; btn.style.padding='9px 4px'; btn.style.fontSize='12px';
+    btn.textContent=m.emo+m.nm;
+    btn.addEventListener('click',()=>{ setPetMode(m.k); });
+    cmd.appendChild(btn);
+  }
   const l=document.getElementById('petList'); l.innerHTML='';
   const tameBtn=document.createElement('button');
   tameBtn.className='big'; tameBtn.style.marginBottom='12px';
@@ -1571,14 +1804,28 @@ function renderPets(){
   }
   for(const pet of G.pets){
     const d=ANIMALS[pet.t];
+    if(pet.hpMax==null) pet.hpMax=d.hp;
     const div=document.createElement('div'); div.className='pet';
     div.innerHTML=`<div style="font-size:30px">${d.emo}</div>
-      <div style="flex:1"><div style="font-weight:600">${d.nm} <span class="tag">攻击 ${d.petDmg||6}</span></div>
-      <div class="sub" style="margin:2px 0 0">生命 ${Math.round(pet.hp)}/${pet.hpMax} · 自动跟随并攻击丧尸</div></div>`;
-    const rel=document.createElement('button'); rel.className='cbtn dim'; rel.textContent='放归';
+      <div style="flex:1"><div style="font-weight:600">${d.nm} <span class="tag">攻击 ${Math.round((d.petDmg||6)*beaconDmgMul())}</span></div>
+      <div class="bar hp" style="height:9px;margin-top:5px"><i style="transform:scaleX(${clamp(pet.hp/pet.hpMax,0,1)})"></i></div>
+      <div class="sub" style="margin:3px 0 0">生命 ${Math.round(pet.hp)}/${pet.hpMax}</div></div>`;
+    const box=document.createElement('div'); box.style.display='flex'; box.style.flexDirection='column'; box.style.gap='5px';
+    const heal=document.createElement('button'); heal.className='cbtn'+((G.inv.meat||0)>0?'':' dim'); heal.style.padding='7px 10px'; heal.style.fontSize='12px'; heal.textContent='🥩喂食';
+    heal.addEventListener('click',()=>{ if((G.inv.meat||0)<=0){toast('需要🥩生肉');return;} G.inv.meat--; if(G.inv.meat<=0)delete G.inv.meat; pet.hp=Math.min(pet.hpMax,pet.hp+20); spawnFX(pet.x,pet.y-14,'❤️','get'); renderPets(); });
+    const rel=document.createElement('button'); rel.className='cbtn dim'; rel.style.padding='7px 10px'; rel.style.fontSize='12px'; rel.textContent='放归';
     rel.addEventListener('click',()=>{ G.pets=G.pets.filter(x=>x!==pet); pet.tamed=false; pet.hp=pet.hpMax; G.animals.push(pet); renderPets(); toast('放归了 '+d.nm); });
-    div.appendChild(rel); l.appendChild(div);
+    box.appendChild(heal); box.appendChild(rel);
+    div.appendChild(box); l.appendChild(div);
   }
+}
+function setPetMode(k){
+  G.petMode=k;
+  // 切到驻守：把当前位置设为各同伴岗位
+  if(k==='guard'){ for(const pet of G.pets){ pet.post={x:pet.x,y:pet.y}; } }
+  const nm=PET_MODES.find(m=>m.k===k).nm;
+  toast('同伴指令：'+nm+(k==='guard'?'（驻守当前位置）':''));
+  renderPets();
 }
 
 /* ============================================================
@@ -1601,7 +1848,10 @@ function loadGame(){
     G.tech=G.tech||{points:0,unlocked:[]}; if(!G.tech.unlocked) G.tech.unlocked=[];
     G.horde=G.horde||{active:false,doneDay:0,warned:0};
     if(!G.hotbar||G.hotbar.length<6) G.hotbar=['axe','pick','spear','torch','pistol','rifle'];
-    G.stats=G.stats||{harvested:0,killed:0,tamed:0,built:0,daysSurvived:0,bossKilled:0};
+    G.stats=Object.assign({harvested:0,crafted:0,killed:0,gunKills:0,tamed:0,built:0,daysSurvived:0,bossKilled:0,hordesSurvived:0,crates:0}, G.stats||{});
+    G.beacon=G.beacon||null; G.petMode=G.petMode||'follow'; G.ach=G.ach||{done:[]}; if(!G.ach.done)G.ach.done=[];
+    G.crates=G.crates||[];
+    if(G.beacon) applyBeacon();
     return true;
   }catch(e){ return false; }
 }
@@ -1618,14 +1868,14 @@ document.getElementById('btnExport').addEventListener('click',()=>{
 document.getElementById('btnImport').addEventListener('click',()=>{
   const v=document.getElementById('saveBox').value.trim();
   if(!v){ toast('请先粘贴存档数据'); return; }
-  try{ const d=JSON.parse(v); if(!d.player) throw 0; localStorage.setItem(SAVE_KEY,v); G=d; buildTerrain(); toast('导入成功'); refreshHUD(); }
+  try{ const d=JSON.parse(v); if(!d.player) throw 0; localStorage.setItem(SAVE_KEY,v); loadGame(); buildTerrain(); ensureCrates(); toast('导入成功'); refreshHUD(); }
   catch(e){ toast('存档格式无效'); }
 });
 document.getElementById('btnReset').addEventListener('click',()=>{
   if(confirm('确定要清空进度、重新开始吗？')){
     localStorage.removeItem(SAVE_KEY);
     closePanel();
-    newGame(); buildTerrain(); running=true; refreshHUD();
+    newGame(); buildTerrain(); ensureCrates(); running=true; refreshHUD();
     toast('世界已重置，重新开始生存');
   }
 });
@@ -1634,14 +1884,14 @@ document.getElementById('btnReset').addEventListener('click',()=>{
    启动
    ============================================================ */
 function startFresh(){
-  newGame(); buildTerrain();
+  newGame(); buildTerrain(); ensureCrates();
   document.getElementById('intro').style.display='none';
   running=true; lastT=performance.now();
   refreshHUD();
 }
 function startContinue(){
   if(loadGame()){
-    buildTerrain();
+    buildTerrain(); ensureCrates();
     document.getElementById('intro').style.display='none';
     running=true; lastT=performance.now();
     refreshHUD();
